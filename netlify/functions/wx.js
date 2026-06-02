@@ -29,16 +29,18 @@ exports.handler = async (event) => {
     const [mRes, tRes] = await Promise.all([fetch(metarUrl), fetch(tafUrl)]);
 
     if (mRes.ok) {
-      const metars = await mRes.json().catch(() => []);
-      (Array.isArray(metars) ? metars : []).forEach(m => {
+      const mJson = await mRes.json().catch(() => []);
+      const metars = Array.isArray(mJson) ? mJson : (mJson.data || []);
+      metars.forEach(m => {
         const k = (m.icaoId || "").toUpperCase();
         if (k) ensure(k).metar = m.rawOb || m.rawMETAR || null;
       });
     }
 
     if (tRes.ok) {
-      const tafs = await tRes.json().catch(() => []);
-      (Array.isArray(tafs) ? tafs : []).forEach(t => {
+      const tJson = await tRes.json().catch(() => []);
+      const tafs = Array.isArray(tJson) ? tJson : (tJson.data || []);
+      tafs.forEach(t => {
         const k = (t.icaoId || "").toUpperCase();
         if (!k) return;
         const e = ensure(k);
@@ -48,7 +50,9 @@ exports.handler = async (event) => {
           from: f.timeFrom, to: f.timeTo,
           wspd: f.wspd, wgst: f.wgst,
           visib: f.visib,
-          wx: f.wxString || null,
+          wxString: f.wxString || null,
+          prob: f.probability != null ? f.probability : null,
+          change: f.fcstChange || null,
           clouds: (f.clouds || []).map(c => ({ cover: c.cover, base: c.base })),
         }));
       });
