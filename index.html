@@ -679,6 +679,25 @@ function tafWeather(fcsts){
   return { text: wxTxt ? decodeWx(wxTxt) : "Clear", cls: CLS[wxFlag] };
 }
 
+/* Lowest broken/overcast cloud base across the day window, for the Cloud base
+   box. Returns {text, cls} in feet, or null if no TAF covers the window.
+   "—" where the TAF mentions no significant cloud (i.e. nothing BKN/OVC). */
+function tafCloud(fcsts, m){
+  if(!fcsts || !fcsts.length) return null;
+  const [tFrom,tTo]=windowEpoch();
+  const sel=fcsts.filter(f=>f.to>tFrom && f.from<tTo);
+  if(!sel.length) return null;
+  let ceil=Infinity;
+  sel.forEach(f=>{
+    (f.clouds||[]).forEach(c=>{
+      if((c.cover==="BKN"||c.cover==="OVC"||c.cover==="VV") && c.base!=null && +c.base<ceil) ceil=+c.base;
+    });
+  });
+  if(ceil===Infinity) return { text:"—", cls:"g" };  // no significant cloud forecast
+  const cls = ceil>=m.ceilGood ? "g" : ceil>=m.ceilMarg ? "m" : "p";
+  return { text:Math.round(ceil).toLocaleString("en-GB"), unit:"ft", cls };
+}
+
 /* ---- Assess: forecast model (fallback) ------------------------------- */
 function compassPoint(deg){
   if(deg==null||isNaN(deg)) return "";
@@ -738,14 +757,21 @@ function reassess(){
         a.score += alarm.sev*150; // push it down the sort too
       }
     }
-    // Where a TAF exists, show its decoded weather in place of the model's
-    // rain-chance box: the TAF condition is the sharper signal.
+    // Where a TAF exists, prefer its sharper aviation figures over the model's
+    // coarser ones: decoded weather in place of rain-chance, and a precise
+    // cloud base (feet) in place of the cloud-cover percentage.
     if(r.fcsts){
       const w=tafWeather(r.fcsts);
       if(w){
         const rainIdx=a.metrics.findIndex(mt=>mt.k==="Rain");
         const wxBox={k:"Weather",v:w.text,unit:"",cls:w.cls};
         if(rainIdx>=0) a.metrics[rainIdx]=wxBox; else a.metrics.push(wxBox);
+      }
+      const c=tafCloud(r.fcsts, m);
+      if(c){
+        const lowIdx=a.metrics.findIndex(mt=>mt.k==="Low cloud");
+        const cBox={k:"Cloud base",v:c.text,unit:c.unit||"",cls:c.cls};
+        if(lowIdx>=0) a.metrics[lowIdx]=cBox; else a.metrics.push(cBox);
       }
     }
     return { dest:r.dest, dist:r.dist, a, metar:r.metar, taf:r.taf };
