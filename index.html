@@ -161,6 +161,9 @@
   details.raw summary::-webkit-details-marker{display:none}
   details.raw summary::before{content:"▸ ";color:var(--amber)}
   details.raw[open] summary::before{content:"▾ "}
+  .thin{margin-top:12px;font-size:.76rem;line-height:1.5;color:var(--marginal);
+    background:var(--marginal-soft);border:1px solid var(--marginal);
+    border-radius:8px;padding:9px 12px}
   details.raw pre{margin-top:8px;white-space:pre-wrap;word-break:break-word;
     font-size:.72rem;line-height:1.6;color:var(--ink);background:var(--bg);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px}
@@ -592,14 +595,28 @@ const levelFrom = ls => { const w=Math.max(...ls), sum=ls.reduce((a,b)=>a+b,0);
 /* ---- Assess: real TAF ------------------------------------------------ */
 function assessTaf(fcsts, m){
   if(!fcsts || !fcsts.length) return null;
-  // Prefer tomorrow's daytime window, but if the TAF doesn't reach that far,
-  // use whatever periods the TAF actually covers. A TAF that exists at all
-  // should produce a verdict, not silently fall back to the model.
   const [tFrom,tTo]=windowEpoch();
+
+  // Periods that overlap tomorrow's daytime window at all.
   let sel=fcsts.filter(f=>f.to>tFrom && f.from<tTo);
-  if(!sel.length) sel=fcsts.slice();
+
+  // How much of the 08:00-18:00 window does the TAF actually cover?
+  // (TEMPO/PROB groups are intermittent, so judge coverage by the prevailing
+  //  BASE/BECMG/FM periods, i.e. those without a probability tag.)
+  const prevailing=sel.filter(f=>f.prob==null);
+  let covFrom=Infinity, covTo=-Infinity;
+  prevailing.forEach(f=>{ covFrom=Math.min(covFrom,Math.max(f.from,tFrom)); covTo=Math.max(covTo,Math.min(f.to,tTo)); });
+  const windowLen=tTo-tFrom;
+  const covered = covTo>covFrom ? (covTo-covFrom)/windowLen : 0;
+
+  let thin=false;
+  if(!sel.length){ sel=fcsts.slice(); thin=true; }      // TAF ends before tomorrow: using its tail
+  else if(covered < 0.5) thin=true;                      // only catches a sliver of the day
+
   if(!sel.length) return null;
 
+  // Worst case across every selected period, prevailing AND temporary/probable.
+  // A PROB40 thunderstorm is exactly what a pilot needs flagged.
   let gust=0, ceil=Infinity, vis=null, wxFlag=0, wxTxt="Clear";
   sel.forEach(f=>{
     try{
@@ -630,7 +647,7 @@ function assessTaf(fcsts, m){
   const visL  = vis===null?0:(vis>=m.visGood?0:vis>=m.visMarg?1:2);
   const ls=[windL,ceilL,visL,wxFlag];
   return {
-    level:levelFrom(ls), source:"TAF",
+    level:levelFrom(ls), source:"TAF", thin:thin,
     score:ls.reduce((a,b)=>a+b,0)*100+gust,
     metrics:[
       {k:"Gust",v:Math.round(gust),unit:"kt",cls:CLS[windL]},
@@ -698,6 +715,9 @@ function render(rows){
         + (r.taf?`<pre><span class="tag">TAF</span>${r.taf}</pre>`:"")
         + `</details>`;
     }
+    const thinNote = a.thin
+      ? `<div class="thin">This TAF only covers part of tomorrow, so this verdict rests on limited data. Read the raw TAF below before relying on it.</div>`
+      : "";
     el.innerHTML=`
       <div class="card-top">
         <div class="place">
@@ -710,6 +730,7 @@ function render(rows){
         </div>
       </div>
       <div class="metrics">${metrics}</div>
+      ${thinNote}
       ${raw}`;
     cards.appendChild(el);
   });
