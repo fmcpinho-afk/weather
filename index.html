@@ -143,6 +143,9 @@
     padding:18px 20px;position:relative;overflow:hidden;box-shadow:var(--shadow);
     opacity:0;transform:translateY(8px);animation:rise .5s ease forwards}
   @keyframes rise{to{opacity:1;transform:none}}
+  .card.flash{animation:flash 1.6s ease}
+  @keyframes flash{0%,100%{box-shadow:var(--shadow)}25%,55%{box-shadow:0 0 0 2px var(--amber),var(--shadow)}}
+  .popup-link{color:var(--amber);font-size:.78rem}
   .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
   .card.good::before{background:var(--good)}
   .card.marginal::before{background:var(--marginal)}
@@ -332,7 +335,6 @@ const airfields = [
   {name:"Norwich",icao:"EGSH",lat:52.676,lon:1.283},
   {name:"Beccles",icao:"EGSM",lat:52.435,lon:1.620},
   {name:"Seething",icao:"EGSJ",lat:52.515,lon:1.418},
-  {name:"Tibenham",icao:"",lat:52.452,lon:1.155},
   {name:"Earls Colne",icao:"EGSR",lat:51.917,lon:0.638},
   {name:"Andrewsfield",icao:"EGSL",lat:51.895,lon:0.450},
   {name:"Stapleford",icao:"EGSG",lat:51.652,lon:0.156},
@@ -424,7 +426,6 @@ const airfields = [
   {name:"Solent (Daedalus)",icao:"EGHF",lat:50.814,lon:-1.214},
   {name:"Southend",icao:"EGMC",lat:51.571,lon:0.696},
   {name:"London City",icao:"EGLC",lat:51.505,lon:0.055},
-  {name:"Wattisham",icao:"EGUW",lat:52.127,lon:0.956},
   {name:"Humberside",icao:"EGNJ",lat:53.574,lon:-0.351},
   {name:"Kirkbride",icao:"EGNL",lat:54.879,lon:-3.250},
   {name:"Eshott",icao:"EGCT",lat:55.281,lon:-1.704},
@@ -805,6 +806,14 @@ function reassess(){
 }
 
 /* ---- Map: real OpenStreetMap via Leaflet ----------------------------- */
+function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
+function focusCard(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.scrollIntoView({behavior:"smooth",block:"center"});
+  el.classList.add("flash");
+  setTimeout(()=>el.classList.remove("flash"),1600);
+}
 let _map=null, _markers=null;
 function drawMap(rows){
   const wrap=document.getElementById("mapwrap");
@@ -835,10 +844,14 @@ function drawMap(rows){
   // worst first so good dots end up on top
   rows.slice().sort((a,b)=>b.a.score-a.a.score).forEach(r=>{
     const c=col[r.a.level];
-    L.circleMarker([r.dest.lat,r.dest.lon],{
+    const cardId="card-"+slug(r.dest.name);
+    const mk=L.circleMarker([r.dest.lat,r.dest.lon],{
       radius:7, color:"#ffffff", weight:1.5, fillColor:c, fillOpacity:0.95
     }).bindPopup("<b>"+r.dest.name+"</b><br>"+verdictWord(r.a.level)
-        +(r.dest.icao?"<br>"+r.dest.icao:"")).addTo(_markers);
+        +(r.dest.icao?"<br>"+r.dest.icao:"")
+        +'<br><a href="#'+cardId+'" class="popup-link">See weather details</a>').addTo(_markers);
+    // clicking the dot itself also jumps to the card
+    mk.on("click",()=>{ setTimeout(()=>focusCard(cardId),50); });
     pts.push([r.dest.lat,r.dest.lon]);
   });
 
@@ -856,6 +869,7 @@ function render(rows){
     const a=r.a, d=r.dest;
     const el=document.createElement("div");
     el.className="card "+a.level;
+    el.id="card-"+slug(d.name);
     el.style.animationDelay=(i*45)+"ms";
     const verdict=a.level==="good"?"Looks good":a.level==="marginal"?"Marginal":"Probably not";
     const metrics=a.metrics.map(mt=>
