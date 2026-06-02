@@ -53,6 +53,27 @@
   .from{display:flex;align-items:baseline;gap:10px;flex:1;min-width:160px}
   .lbl{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
   .from .val{font-family:"Fraunces",serif;font-size:1.15rem;color:var(--ink)}
+  .from-btn{font-family:"Fraunces",serif;font-size:1.15rem;color:var(--ink);
+    background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .from-btn .caret{font-size:.7rem;color:var(--amber);transform:translateY(1px)}
+  .from-btn:hover{color:var(--amber)}
+
+  .locpanel{margin:10px 0 0;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px}
+  .loc-row{display:flex;gap:8px}
+  .loc-row input{flex:1;font-family:"Spline Sans Mono",monospace;font-size:.88rem;
+    padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+  .loc-row input:focus{outline:none;border-color:var(--amber)}
+  .locgeo{margin-top:10px;width:100%;font-size:.76rem}
+  .loc-results{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+  .loc-hit{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;cursor:pointer;text-align:left;color:var(--ink);font-size:.86rem}
+  .loc-hit:hover{border-color:var(--amber)}
+  .loc-hit .where{font-size:.7rem;color:var(--muted)}
+  .loc-note{font-size:.74rem;color:var(--muted);margin-top:4px}
+  .loc-save{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.78rem;color:var(--muted)}
+  .loc-save input{accent-color:var(--amber);width:15px;height:15px}
   button{font-family:"Spline Sans Mono",monospace;font-size:.8rem;letter-spacing:.04em;
     cursor:pointer;color:#fff;background:var(--amber);border:none;padding:10px 16px;
     border-radius:9px;transition:transform .12s ease,filter .12s ease}
@@ -167,14 +188,22 @@
   <div class="controls">
     <div class="from">
       <span class="lbl">From</span>
-      <span class="val" id="fromName">Cambridge</span>
+      <button class="from-btn" id="fromBtn"><span id="fromName">Cambridge</span> <span class="caret">▾</span></button>
     </div>
     <div class="radius">
       <label for="radius">Within <b id="radiusVal">100</b> nm</label>
       <input type="range" id="radius" min="25" max="300" step="25" value="100">
     </div>
-    <button id="locBtn" class="ghost">Use my location</button>
     <button id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="locpanel" id="locPanel" hidden>
+    <div class="loc-row">
+      <input type="text" id="locInput" placeholder="Town, airfield or postcode, e.g. Cambridge" autocomplete="off">
+      <button id="locSearch">Search</button>
+    </div>
+    <button id="locGeo" class="ghost locgeo">Use my current location instead</button>
+    <div class="loc-results" id="locResults"></div>
   </div>
 
   <div class="mins-wrap">
@@ -618,14 +647,79 @@ async function load(){
 }
 
 /* ---- Events ---------------------------------------------------------- */
-document.getElementById("locBtn").addEventListener("click",()=>{
+/* Set-location: type a place, search, pick, optionally save as home base.
+   Saved home persists between visits (works once live on the web). */
+const HOME_KEY="wcif_home_v1";
+
+function setHome(h, save){
+  home=h;
+  document.getElementById("fromName").textContent=h.name;
+  if(save){ try{ localStorage.setItem(HOME_KEY, JSON.stringify(h)); }catch(e){} }
+}
+function loadSavedHome(){
+  try{
+    const raw=localStorage.getItem(HOME_KEY);
+    if(raw){ const h=JSON.parse(raw);
+      if(h && h.name && h.lat!=null && h.lon!=null){
+        home=h; document.getElementById("fromName").textContent=h.name;
+      }
+    }
+  }catch(e){}
+}
+
+const locPanel=document.getElementById("locPanel");
+const locInput=document.getElementById("locInput");
+const locResults=document.getElementById("locResults");
+
+document.getElementById("fromBtn").addEventListener("click",()=>{
+  locPanel.hidden=!locPanel.hidden;
+  if(!locPanel.hidden){ locInput.focus(); }
+});
+
+async function runSearch(){
+  const q=locInput.value.trim();
+  if(!q){ return; }
+  locResults.innerHTML='<div class="loc-note">Searching…</div>';
+  try{
+    const url="https://geocoding-api.open-meteo.com/v1/search?name="
+      +encodeURIComponent(q)+"&count=6&language=en&format=json";
+    const res=await fetchT(url);
+    const j=await res.json();
+    const hits=(j&&j.results)||[];
+    if(!hits.length){ locResults.innerHTML='<div class="loc-note">Nothing found. Try a town name or postcode.</div>'; return; }
+    locResults.innerHTML="";
+    hits.forEach(r=>{
+      const where=[r.admin1,r.country].filter(Boolean).join(", ");
+      const btn=document.createElement("button");
+      btn.className="loc-hit";
+      btn.innerHTML='<span>'+r.name+'</span><span class="where">'+where+'</span>';
+      btn.addEventListener("click",()=>{
+        const save=document.getElementById("locSaveChk").checked;
+        setHome({name:r.name, lat:r.latitude, lon:r.longitude}, save);
+        locPanel.hidden=true; locResults.innerHTML=""; locInput.value="";
+        load();
+      });
+      locResults.appendChild(btn);
+    });
+    const saveWrap=document.createElement("label");
+    saveWrap.className="loc-save";
+    saveWrap.innerHTML='<input type="checkbox" id="locSaveChk" checked> Remember this as my home base';
+    locResults.appendChild(saveWrap);
+  }catch(e){
+    locResults.innerHTML='<div class="loc-note">Couldn\'t reach the place lookup. Try again in a moment.</div>';
+  }
+}
+document.getElementById("locSearch").addEventListener("click",runSearch);
+locInput.addEventListener("keydown",e=>{ if(e.key==="Enter") runSearch(); });
+
+document.getElementById("locGeo").addEventListener("click",()=>{
   const status=document.getElementById("status");
-  if(!navigator.geolocation){status.textContent="Location isn't available in this browser.";return;}
-  status.innerHTML='<span class="dot"></span>Asking for your location…';
+  if(!navigator.geolocation){ locResults.innerHTML='<div class="loc-note">Location isn\'t available in this browser.</div>'; return; }
+  locResults.innerHTML='<div class="loc-note">Asking for your location…</div>';
   navigator.geolocation.getCurrentPosition(
-    pos=>{home={name:"your location",lat:pos.coords.latitude,lon:pos.coords.longitude};
-      document.getElementById("fromName").textContent="Your location";load();},
-    ()=>{status.textContent="No location given, so distances are from Cambridge.";load();}
+    pos=>{ setHome({name:"My location",lat:pos.coords.latitude,lon:pos.coords.longitude}, false);
+      locPanel.hidden=true; locResults.innerHTML=""; load(); },
+    ()=>{ locResults.innerHTML='<div class="loc-note">No location given. Search for a place instead.</div>'; }
   );
 });
 document.getElementById("refreshBtn").addEventListener("click",load);
@@ -643,6 +737,7 @@ document.querySelectorAll(".preset").forEach(btn=>{
   });
 });
 
+loadSavedHome();
 load();
 </script>
 </body>
