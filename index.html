@@ -389,7 +389,7 @@ let home = { name:"Duxford", lat:52.092, lon:0.132 };
 let radiusNm = 100;
 let dayOffset = 1;   // 0 = today, 1 = tomorrow
 let flightRules = "vfr";  // "vfr" or "ifr"
-const MAX_SHOWN = 120;
+const MAX_SHOWN = 250;
 const CRUISE_KT = 150;
 let lastFetch = [];   // cached per-field raw data, so changing minimums needs no refetch
 let lastTafUsedCount = 0;
@@ -1264,11 +1264,15 @@ function render(rows){
 async function fetchWx(ids){
   if(!ids.length) return {};
   try{
-    const res=await fetchT("/.netlify/functions/wx?ids="+encodeURIComponent(ids.join(",")));
-    if(!res.ok) throw 0;
-    const out=await res.json();
+    const batches=chunk(ids,50);  // keep each request's id list short and reliable
+    const parts=await Promise.all(batches.map(async b=>{
+      const res=await fetchT("/.netlify/functions/wx?ids="+encodeURIComponent(b.join(",")));
+      if(!res.ok) throw 0;
+      return await res.json();
+    }));
+    const out=Object.assign({},...parts);
     if(!out||!Object.keys(out).length) wxModelOnly=true;
-    return out||{};
+    return out;
   }catch(e){ wxModelOnly=true; return {}; }
 }
 
@@ -1298,7 +1302,8 @@ async function load(){
   const ids=inRange.map(a=>a.icao).filter(Boolean);
   const modelByName={};
   try{
-    for(const batch of chunk(inRange,25)){
+    const batches=chunk(inRange,25);
+    const parts=await Promise.all(batches.map(async batch=>{
       const url="https://api.open-meteo.com/v1/forecast?latitude="+batch.map(a=>a.lat).join(",")
         +"&longitude="+batch.map(a=>a.lon).join(",")
         +"&hourly=cloud_cover_low,visibility,precipitation_probability,wind_gusts_10m,wind_speed_10m,wind_direction_10m"
@@ -1306,13 +1311,15 @@ async function load(){
       const res=await fetchT(url);
       if(!res.ok) throw new Error("model");
       const j=await res.json();
-      const arr=Array.isArray(j)?j:[j];
+      return {batch, arr:Array.isArray(j)?j:[j]};
+    }));
+    parts.forEach(({batch,arr})=>{
       arr.forEach((loc,i)=>{
         const d=batch[i], times=loc.hourly.time, idxs=[];
         times.forEach((ts,k)=>{ if(ts.slice(0,10)===tmrw){const hr=+ts.slice(11,13); if(hr>=8&&hr<=18) idxs.push(k);} });
         modelByName[d.name]={hourly:loc.hourly, idxs};
       });
-    }
+    });
   }catch(e){
     status.innerHTML='<span class="err">Couldn\'t reach the forecast service just now. Check your connection and tap Refresh.</span>';
     return;
