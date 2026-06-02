@@ -226,6 +226,12 @@
     text-transform:uppercase;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
     background:var(--panel);color:var(--ink)}
   .wl-add input:focus{outline:none;border-color:var(--amber)}
+  .wl-results{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px}
+  .wl-hit{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:10px 13px;cursor:pointer;text-align:left;color:var(--ink);font-size:.9rem}
+  .wl-hit:hover{border-color:var(--amber)}
+  .wl-hit .where{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
   .wl-count{font-size:.74rem;color:var(--muted)}
   .wl-msg{font-size:.8rem;color:var(--poor);min-height:1em;margin:4px 2px}
   .wl-list{display:flex;flex-direction:column;gap:14px;margin-top:10px}
@@ -358,12 +364,13 @@
 
   <div id="view-watchlist" hidden>
     <h1 class="wl-title">Watchlist</h1>
-    <p class="sub">Up to five places you're keeping an eye on for a piece, with a few days' outlook each so you can spot a good window. Add them by airport code.</p>
+    <p class="sub">Up to five places you're keeping an eye on for a piece, with a few days' outlook each so you can spot a good window. Search by name or airport code.</p>
     <div class="wl-add">
-      <input type="text" id="wlInput" placeholder="Airport code, e.g. LFAT" autocomplete="off" maxlength="4">
-      <button id="wlAdd">Add</button>
+      <input type="text" id="wlInput" placeholder="Name or code, e.g. Oban or EGEO" autocomplete="off">
+      <button id="wlAdd">Search</button>
       <span class="wl-count" id="wlCount"></span>
     </div>
+    <div class="wl-results" id="wlResults"></div>
     <div class="wl-msg" id="wlMsg"></div>
     <div class="wl-list" id="wlList"></div>
   </div>
@@ -1533,7 +1540,7 @@ function renderWatch(){
   document.getElementById("wlCount").textContent=watch.length+" of 5";
   document.getElementById("wlAdd").disabled = watch.length>=5;
   if(!watch.length){
-    list.innerHTML='<div class="wl-msg" style="color:var(--muted)">Nothing yet. Add a place by its airport code above.</div>';
+    list.innerHTML='<div class="wl-msg" style="color:var(--muted)">Nothing yet. Search a place by name or code above.</div>';
     return;
   }
   list.innerHTML="";
@@ -1553,24 +1560,75 @@ function renderWatch(){
   });
 }
 
-async function addWatch(){
-  const msg=document.getElementById("wlMsg");
-  const input=document.getElementById("wlInput");
-  const code=input.value.toUpperCase().trim();
-  msg.style.color="var(--poor)";
-  if(!code){ return; }
-  if(watch.length>=5){ msg.textContent="That's the five-place limit. Remove one to add another."; return; }
-  if(watch.some(w=>w.icao===code)){ msg.textContent=code+" is already on your watchlist."; return; }
-  msg.style.color="var(--muted)"; msg.textContent="Looking up "+code+"…";
-  const d=await resolveDest(code);
-  if(!d){ msg.style.color="var(--poor)"; msg.textContent="Couldn't find "+code+". Check the code, or it may be a field with no weather data."; return; }
-  msg.textContent=""; input.value="";
-  watch.push({icao:d.icao, name:d.name, lat:d.lat, lon:d.lon, note:""});
-  saveWatch(); renderWatch();
+// Rank local airfields matching a query by name or code
+function rankMatches(q){
+  q=q.toLowerCase();
+  const scored=[];
+  airfields.forEach(a=>{
+    const name=a.name.toLowerCase(), code=(a.icao||"").toLowerCase();
+    let s=-1;
+    if(code && code===q) s=0;
+    else if(code && code.startsWith(q)) s=1;
+    else if(name.startsWith(q)) s=2;
+    else if(name.includes(q)) s=3;
+    else if(code && code.includes(q)) s=4;
+    if(s>=0) scored.push([s,a]);
+  });
+  scored.sort((x,y)=> x[0]-y[0] || x[1].name.localeCompare(y[1].name));
+  return scored.slice(0,8).map(x=>x[1]);
 }
 
-document.getElementById("wlAdd").addEventListener("click",addWatch);
-document.getElementById("wlInput").addEventListener("keydown",e=>{ if(e.key==="Enter") addWatch(); });
+function addWatchEntry(d){
+  const msg=document.getElementById("wlMsg");
+  if(watch.length>=5){ msg.style.color="var(--poor)"; msg.textContent="That's the five-place limit. Remove one to add another."; return; }
+  const dupKey=d.icao||("NAME:"+d.name);
+  if(watch.some(w=>(w.icao||("NAME:"+w.name))===dupKey)){ msg.style.color="var(--poor)"; msg.textContent=d.name+" is already on your watchlist."; return; }
+  watch.push({icao:d.icao||"", name:d.name, lat:d.lat, lon:d.lon, note:""});
+  saveWatch();
+  document.getElementById("wlInput").value="";
+  document.getElementById("wlResults").innerHTML="";
+  msg.textContent="";
+  renderWatch();
+}
+
+async function searchWatch(){
+  const msg=document.getElementById("wlMsg");
+  const results=document.getElementById("wlResults");
+  const q=document.getElementById("wlInput").value.trim();
+  msg.textContent="";
+  if(!q){ results.innerHTML=""; return; }
+  if(watch.length>=5){ msg.style.color="var(--poor)"; msg.textContent="That's the five-place limit. Remove one to add another."; return; }
+
+  const matches=rankMatches(q);
+  if(matches.length){
+    results.innerHTML="";
+    matches.forEach(a=>{
+      const btn=document.createElement("button");
+      btn.className="wl-hit";
+      btn.innerHTML='<span>'+a.name+'</span><span class="where">'+(a.icao||"no code")+'</span>';
+      btn.addEventListener("click",()=>addWatchEntry(a));
+      results.appendChild(btn);
+    });
+    return;
+  }
+  // no local match: if it looks like a code, try the weather engine for it
+  if(/^[A-Za-z]{4}$/.test(q)){
+    results.innerHTML='<div class="wl-msg" style="color:var(--muted)">Looking up '+q.toUpperCase()+'…</div>';
+    const d=await resolveDest(q);
+    if(d){ results.innerHTML="";
+      const btn=document.createElement("button");
+      btn.className="wl-hit";
+      btn.innerHTML='<span>'+d.name+'</span><span class="where">'+d.icao+'</span>';
+      btn.addEventListener("click",()=>addWatchEntry(d));
+      results.appendChild(btn);
+      return;
+    }
+  }
+  results.innerHTML='<div class="wl-msg" style="color:var(--poor)">Nothing found for "'+q+'". Try a different spelling, or an airport code.</div>';
+}
+
+document.getElementById("wlAdd").addEventListener("click",searchWatch);
+document.getElementById("wlInput").addEventListener("keydown",e=>{ if(e.key==="Enter") searchWatch(); });
 document.getElementById("wlList").addEventListener("click",e=>{
   const rm=e.target.closest(".wl-remove"); if(!rm) return;
   watch.splice(+rm.dataset.i,1); saveWatch(); renderWatch();
