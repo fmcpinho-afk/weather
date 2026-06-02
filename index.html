@@ -660,6 +660,25 @@ function tafAlarm(fcsts, m){
   return { sev, reason:clean.join(", ") };
 }
 
+/* Plain-English weather from the TAF for the day window, for the Weather box.
+   Returns {text, cls} where cls is g/m/p, or null if no TAF covers the window.
+   Unlike the alarm, this shows even benign conditions like light rain. */
+function tafWeather(fcsts){
+  if(!fcsts || !fcsts.length) return null;
+  const [tFrom,tTo]=windowEpoch();
+  const sel=fcsts.filter(f=>f.to>tFrom && f.from<tTo);
+  if(!sel.length) return null;
+  let wxFlag=0, wxTxt="";
+  sel.forEach(f=>{
+    const wxs=f.wxString||f.wx;
+    if(wxs){
+      if(/TS|FG|FZ/.test(wxs)){ if(wxFlag<2){wxFlag=2; wxTxt=wxs;} }
+      else if(/RA|SN|SH|DZ|GR|PL|BR|HZ|DU/.test(wxs)){ if(wxFlag<1){wxFlag=1; wxTxt=wxs;} }
+    }
+  });
+  return { text: wxTxt ? decodeWx(wxTxt) : "Clear", cls: CLS[wxFlag] };
+}
+
 /* ---- Assess: forecast model (fallback) ------------------------------- */
 function compassPoint(deg){
   if(deg==null||isNaN(deg)) return "";
@@ -717,6 +736,16 @@ function reassess(){
       if(order[want] > order[a.level]){
         a.level = want;
         a.score += alarm.sev*150; // push it down the sort too
+      }
+    }
+    // Where a TAF exists, show its decoded weather in place of the model's
+    // rain-chance box: the TAF condition is the sharper signal.
+    if(r.fcsts){
+      const w=tafWeather(r.fcsts);
+      if(w){
+        const rainIdx=a.metrics.findIndex(mt=>mt.k==="Rain");
+        const wxBox={k:"Weather",v:w.text,unit:"",cls:w.cls};
+        if(rainIdx>=0) a.metrics[rainIdx]=wxBox; else a.metrics.push(wxBox);
       }
     }
     return { dest:r.dest, dist:r.dist, a, metar:r.metar, taf:r.taf };
