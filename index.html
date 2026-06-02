@@ -154,6 +154,8 @@
     100%{box-shadow:var(--shadow)}
   }
   .popup-link{color:var(--amber);font-size:.78rem}
+  .windy-link{color:var(--amber);text-decoration:none}
+  .windy-link:hover{text-decoration:underline}
   .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
   .card.good::before{background:var(--good)}
   .card.marginal::before{background:var(--marginal)}
@@ -937,6 +939,11 @@ function reassess(){
 
 /* ---- Map: real OpenStreetMap via Leaflet ----------------------------- */
 function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
+// Link out to Windy: airport page (METAR/TAF + map) by ICAO, else map by coords
+function windyUrl(d){
+  return d.icao ? "https://www.windy.com/"+d.icao
+                : "https://www.windy.com/?wind,"+d.lat+","+d.lon+",8";
+}
 function focusCard(id){
   const el=document.getElementById(id);
   if(!el) return;
@@ -1034,7 +1041,7 @@ function render(rows){
       <div class="card-top">
         <div class="place">
           <span class="name">${d.name}</span>
-          <span class="meta">${d.icao?d.icao+" · ":""}${Math.round(r.dist)} nm · ~${flightTime(r.dist)} each way</span>
+          <span class="meta">${d.icao?d.icao+" · ":""}${Math.round(r.dist)} nm · ~${flightTime(r.dist)} each way · <a class="windy-link" href="${windyUrl(d)}" target="_blank" rel="noopener">Windy ↗</a></span>
         </div>
         <div class="right">
           <span class="src ${r.tafUsed?"live":""}">${srcLabel}</span>
@@ -1344,7 +1351,7 @@ function renderWatch(){
     const card=document.createElement("div"); card.className="wl-card";
     card.innerHTML=`
       <div class="wl-head">
-        <div><div class="wl-name">${w.name}</div><div class="wl-code">${w.icao}</div></div>
+        <div><div class="wl-name">${w.name}</div><div class="wl-code">${w.icao} · <a class="windy-link" href="${windyUrl(w)}" target="_blank" rel="noopener">Windy ↗</a></div></div>
         <button class="wl-remove" data-i="${idx}">Remove</button>
       </div>
       <div class="wl-days" data-days="${idx}"><div class="wl-msg" style="color:var(--muted);grid-column:1/-1">Loading outlook…</div></div>
