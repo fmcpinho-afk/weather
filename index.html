@@ -274,6 +274,7 @@ let dayOffset = 1;   // 0 = today, 1 = tomorrow
 const MAX_SHOWN = 40;
 const CRUISE_KT = 150;
 let lastFetch = [];   // cached per-field raw data, so changing minimums needs no refetch
+let lastTafUsedCount = 0;
 let wxModelOnly = false;
 
 function mins(){
@@ -760,22 +761,27 @@ function reassess(){
     // Where a TAF exists, prefer its sharper aviation figures over the model's
     // coarser ones: decoded weather in place of rain-chance, and a precise
     // cloud base (feet) in place of the cloud-cover percentage.
+    let tafUsed=false;
     if(r.fcsts){
       const w=tafWeather(r.fcsts);
       if(w){
+        tafUsed=true;
         const rainIdx=a.metrics.findIndex(mt=>mt.k==="Rain");
         const wxBox={k:"Weather",v:w.text,unit:"",cls:w.cls};
         if(rainIdx>=0) a.metrics[rainIdx]=wxBox; else a.metrics.push(wxBox);
       }
       const c=tafCloud(r.fcsts, m);
       if(c){
+        tafUsed=true;
         const lowIdx=a.metrics.findIndex(mt=>mt.k==="Low cloud");
         const cBox={k:"Cloud base",v:c.text,unit:c.unit||"",cls:c.cls};
         if(lowIdx>=0) a.metrics[lowIdx]=cBox; else a.metrics.push(cBox);
       }
     }
-    return { dest:r.dest, dist:r.dist, a, metar:r.metar, taf:r.taf };
+    if(alarm) tafUsed=true;  // an alarm also means the TAF informed this card
+    return { dest:r.dest, dist:r.dist, a, metar:r.metar, taf:r.taf, tafUsed };
   }).filter(r=>r.a);
+  lastTafUsedCount = rows.filter(r=>r.tafUsed).length;
   render(rows);
 }
 
@@ -803,8 +809,9 @@ function render(rows){
     const alarmNote = a.alarm
       ? `<div class="alarm sev${a.alarm.sev}">The TAF flags ${a.alarm.reason} during part of tomorrow. Read the raw TAF below before relying on this.</div>`
       : "";
-    // Source pill: model drives the verdict; note whether a real TAF was also checked.
-    const srcLabel = r.taf ? "Model + TAF" : "Model";
+    // Source pill: model drives the verdict. Say "+ TAF" only when the TAF
+    // actually reached the day window and informed this card.
+    const srcLabel = r.tafUsed ? "Model + TAF" : "Model";
     el.innerHTML=`
       <div class="card-top">
         <div class="place">
@@ -812,7 +819,7 @@ function render(rows){
           <span class="meta">${d.icao?d.icao+" · ":""}${Math.round(r.dist)} nm · ~${flightTime(r.dist)} each way</span>
         </div>
         <div class="right">
-          <span class="src ${r.taf?"live":""}">${srcLabel}</span>
+          <span class="src ${r.tafUsed?"live":""}">${srcLabel}</span>
           <span class="verdict ${a.level}">${verdict}</span>
         </div>
       </div>
@@ -898,9 +905,9 @@ async function load(){
   });
   reassess();
 
-  const liveCount=lastFetch.filter(r=>r.taf).length;
+  const liveCount=lastTafUsedCount;
   status.innerHTML = baseNote + (wxModelOnly || liveCount===0
-    ? " Verdicts from the forecast model; no aviation TAFs available just now."
+    ? " Verdicts from the forecast model; no aviation TAFs reach the window just now."
     : " Verdicts from the forecast model, cross-checked against real TAFs at "+liveCount+" of "+lastFetch.length+" fields.");
   const now=new Date();
   document.getElementById("updated").textContent=
