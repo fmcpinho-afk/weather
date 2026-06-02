@@ -9,18 +9,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#ffffff; --panel:#f6f4ef; --panel-2:#efece4; --ink:#16202a;
-    --muted:#6b7a85; --line:#e4ded3; --amber:#bf7414; --amber-soft:#bf741418;
-    --good:#1f9d57; --marginal:#bd8410; --poor:#cf4747;
-    --good-soft:#1f9d5714; --marginal-soft:#bd841016; --poor-soft:#cf474714;
-    --shadow:0 1px 2px rgba(22,32,42,.04),0 8px 24px rgba(22,32,42,.06);
+    --bg:#f4f7fa; --panel:#ffffff; --panel-2:#eef3f8; --ink:#1b2a36;
+    --muted:#5f7689; --line:#dce5ed; --amber:#2f7bb5; --amber-soft:#2f7bb516;
+    --good:#2f9e6f; --marginal:#c79328; --poor:#d05f5f;
+    --good-soft:#2f9e6f14; --marginal-soft:#c7932814; --poor-soft:#d05f5f14;
+    --shadow:0 1px 2px rgba(27,42,54,.05),0 8px 26px rgba(27,42,54,.08);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
     background:
-      radial-gradient(1100px 520px at 85% -12%, #fbf3e6 0%, transparent 60%),
-      radial-gradient(820px 460px at -8% 108%, #eef3f5 0%, transparent 55%),
+      radial-gradient(1100px 520px at 85% -12%, #dcebf8 0%, transparent 60%),
+      radial-gradient(820px 460px at -8% 108%, #e3edf6 0%, transparent 55%),
       var(--bg);
     color:var(--ink);
     font-family:"Spline Sans Mono",ui-monospace,monospace;
@@ -74,17 +74,18 @@
   </div>
 
   <h2>What it actually does</h2>
-  <p>Every airfield within the range you set gets checked against tomorrow's forecast. The cards are then sorted so the most promising weather sits at the top. You set how far to look with the radius slider, and you can start from Cambridge or tap "Use my location" to start from where you are.</p>
+  <p>Every airfield within the range you set gets checked against tomorrow's forecast. The cards are then sorted so the most promising weather sits at the top. You set how far to look with the radius slider, and you can start from your home base, Duxford by default, search for somewhere else, or tap to use your current location.</p>
 
-  <h2>Where the weather comes from</h2>
-  <p>For the larger fields that issue a proper forecast, the tool reads the real <strong>TAF</strong>, the official aviation forecast for that aerodrome. For the many smaller strips that don't issue one, it falls back to a general weather model instead. Each card tells you which it used:</p>
+  <h2>Where the verdict comes from</h2>
+  <p>The coloured verdict on each card comes from a general weather model. That might sound like the weaker option, but for a question about tomorrow it is the stronger one: the model forecasts days ahead and covers the whole of tomorrow evenly. The official aviation forecast, the <strong>TAF</strong>, usually runs only twenty-four hours or so, so by the time you are looking at tomorrow afternoon, today's TAF often has nothing to say about it. Letting a half-blind forecast set the verdict would do more harm than good.</p>
+  <p>So the model leads, and the TAF is used as a safety check on top. Where a real TAF does overlap part of tomorrow, the tool reads it and can raise a flag, a thunderstorm, strong gusts, a low cloudbase, poor visibility. It can only ever add caution, never give the all-clear. The source tag on each card tells you which applied:</p>
 
   <div class="tags">
-    <div class="tagrow"><span class="pill src">TAF</span><span>Real aviation forecast for that aerodrome. Trust this more.</span></div>
-    <div class="tagrow"><span class="pill srcm">Model</span><span>A general weather model standing in where no TAF exists. A reasonable guess, not an aviation product.</span></div>
+    <div class="tagrow"><span class="pill src">Model + TAF</span><span>Verdict from the model, cross-checked against the real aviation forecast for that field.</span></div>
+    <div class="tagrow"><span class="pill srcm">Model</span><span>Verdict from the model alone, where the field issues no TAF.</span></div>
   </div>
 
-  <p>On every card you can open the raw report to read the full METAR and TAF yourself, in their proper coded form. If you read them fluently, that is the bit to trust over my plain-English summary.</p>
+  <p>When the TAF flags something, an amber or red strip appears on the card spelling out what and when. On every card you can also open the raw report to read the full METAR and TAF yourself, in their proper coded form. If you read them fluently, that is the bit to trust over any summary.</p>
 
   <h2>The verdicts</h2>
   <p>Each card carries one of three readings. They describe the forecast, not your abilities, and they are deliberately blunt:</p>
@@ -96,7 +97,7 @@
   </div>
 
   <h2>The numbers on each card</h2>
-  <p>Four figures summarise the day. <strong>Gust</strong> is the strongest gust forecast, in knots. <strong>Ceiling</strong> is the height of the lowest broken or overcast cloud, in feet, so a low number means low cloud. <strong>Visibility</strong> is the poorest forecast, in kilometres. <strong>Weather</strong> spells out anything significant in plain English, with the worst of the day shown, so a passing thunderstorm won't hide behind a calm afternoon.</p>
+  <p>Four figures summarise the day. <strong>Gust</strong> is the strongest gust forecast, in knots. <strong>Low cloud</strong> is how much of the sky low cloud is expected to fill, as a percentage, so a high number means an overcast, murky day. <strong>Vis</strong> is the poorest visibility forecast, in kilometres. <strong>Rain</strong> is the chance of rain, as a percentage. Where a TAF has flagged something sharper, like a specific cloudbase in feet or a thunderstorm, that appears in the warning strip below the figures.</p>
   <p>The distance and rough flight time on each card assume a steady cruise, so treat them as planning figures rather than anything precise.</p>
 
   <h2>How cautious today?</h2>
@@ -104,7 +105,7 @@
   <p>One thing worth knowing: the presets change your appetite for middling days, not your exposure to bad ones. A day with thunderstorms or a very low ceiling reads "Probably not" on all three settings. Confident never dresses up dangerous weather as merely marginal. If you want to set exact limits of your own, "Fine-tune the numbers" under the presets lets you.</p>
 
   <h2>If something looks wrong</h2>
-  <p>If a card sits on "Model" when you'd expect a TAF, that field may simply not issue one, or its forecast may not reach tomorrow's window yet. If the whole page won't load, give it a moment and refresh. The forecast services it relies on are free and occasionally busy.</p>
+  <p>A card tagged "Model" simply means that field issues no TAF, so there was nothing to cross-check against. That is normal for smaller strips and not a fault. If the whole page won't load, give it a moment and refresh; the forecast services it relies on are free and occasionally busy.</p>
 
   <footer>
     Built for <a href="index.html">Where can I fly tomorrow?</a>, part of Fernando's Logbook. Always check the official METARs, TAFs and NOTAMs, and re-check on the day, before you commit to a flight.
