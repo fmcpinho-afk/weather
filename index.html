@@ -828,6 +828,11 @@ function drawMap(rows){
       attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(_map);
     _markers=L.layerGroup().addTo(_map);
+    // popup "See weather details" links: smooth-scroll + flash instead of hard jump
+    document.getElementById("map").addEventListener("click",e=>{
+      const link=e.target.closest(".popup-link");
+      if(link){ e.preventDefault(); focusCard(link.dataset.card); }
+    });
   }
   // Leaflet needs a nudge if it was created while hidden
   setTimeout(()=>_map.invalidateSize(),0);
@@ -845,13 +850,11 @@ function drawMap(rows){
   rows.slice().sort((a,b)=>b.a.score-a.a.score).forEach(r=>{
     const c=col[r.a.level];
     const cardId="card-"+slug(r.dest.name);
-    const mk=L.circleMarker([r.dest.lat,r.dest.lon],{
+    L.circleMarker([r.dest.lat,r.dest.lon],{
       radius:7, color:"#ffffff", weight:1.5, fillColor:c, fillOpacity:0.95
     }).bindPopup("<b>"+r.dest.name+"</b><br>"+verdictWord(r.a.level)
         +(r.dest.icao?"<br>"+r.dest.icao:"")
-        +'<br><a href="#'+cardId+'" class="popup-link">See weather details</a>').addTo(_markers);
-    // clicking the dot itself also jumps to the card
-    mk.on("click",()=>{ setTimeout(()=>focusCard(cardId),50); });
+        +'<br><a href="#'+cardId+'" class="popup-link" data-card="'+cardId+'">See weather details</a>').addTo(_markers);
     pts.push([r.dest.lat,r.dest.lon]);
   });
 
