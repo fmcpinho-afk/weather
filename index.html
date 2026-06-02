@@ -191,6 +191,10 @@
   .alarm{margin-top:12px;font-size:.76rem;line-height:1.5;border-radius:8px;padding:9px 12px}
   .alarm.sev1{color:var(--marginal);background:var(--marginal-soft);border:1px solid var(--marginal)}
   .alarm.sev2{color:var(--poor);background:var(--poor-soft);border:1px solid var(--poor)}
+  .hazard{margin-top:12px;font-size:.78rem;line-height:1.5;border-radius:8px;padding:10px 13px;
+    color:#fff;background:var(--poor);border:1px solid var(--poor);font-weight:500}
+  .rules-note{font-size:.74rem;line-height:1.5;color:var(--muted);margin:8px 2px 0;
+    padding:9px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
   details.raw pre{margin-top:8px;white-space:pre-wrap;word-break:break-word;
     font-size:.72rem;line-height:1.6;color:var(--ink);background:var(--bg);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px}
@@ -224,12 +228,17 @@
       <button data-day="0">Today</button>
       <button data-day="1" class="on">Tomorrow</button>
     </div>
+    <div class="daytoggle" id="rulesToggle">
+      <button data-rules="vfr" class="on">VFR</button>
+      <button data-rules="ifr">IFR</button>
+    </div>
     <div class="radius">
       <label for="radius">Within <b id="radiusVal">100</b> nm</label>
       <input type="range" id="radius" min="25" max="300" step="25" value="100">
     </div>
     <button id="refreshBtn">Refresh</button>
   </div>
+  <div class="rules-note" id="rulesNote" hidden>IFR mode relaxes the cloud and visibility limits and flags thunderstorms and ice. It checks weather only, not your currency, the aircraft, icing aloft, or approach minima. It does not mean a flight is cleared.</div>
 
   <div class="locpanel" id="locPanel" hidden>
     <div class="loc-row">
@@ -301,6 +310,7 @@
 let home = { name:"Duxford", lat:52.092, lon:0.132 };
 let radiusNm = 100;
 let dayOffset = 1;   // 0 = today, 1 = tomorrow
+let flightRules = "vfr";  // "vfr" or "ifr"
 const MAX_SHOWN = 40;
 const CRUISE_KT = 150;
 let lastFetch = [];   // cached per-field raw data, so changing minimums needs no refetch
@@ -316,20 +326,35 @@ function mins(){
   };
 }
 
-/* Presets shift the good/marginal boundary, not the poor boundary.
-   The "marginal" thresholds (the edge of unflyable) stay close across all
-   three, so nothing dangerous ever gets dressed up as merely marginal. */
-const PRESETS = {
-  cautious:  { windGood:10, windMarg:20, ceilGood:3500, ceilMarg:1500, visGood:15, visMarg:6 },
-  standard:  { windGood:15, windMarg:25, ceilGood:2500, ceilMarg:1200, visGood:10, visMarg:5 },
-  confident: { windGood:20, windMarg:28, ceilGood:1800, ceilMarg:1000, visGood:8,  visMarg:5 },
+/* Presets shift the good/marginal boundary, not the poor boundary, so nothing
+   dangerous is ever dressed up as merely marginal. There are two sets: VFR
+   judges cloud and visibility tightly (you must stay visual); IFR relaxes them
+   (you can fly in cloud and lower viz) but still guards the hard edges. IFR
+   does NOT mean the flight is cleared: see the note by the toggle. */
+const PRESET_SETS = {
+  vfr: {
+    cautious:  { windGood:10, windMarg:20, ceilGood:3500, ceilMarg:1500, visGood:15, visMarg:6 },
+    standard:  { windGood:15, windMarg:25, ceilGood:2500, ceilMarg:1200, visGood:10, visMarg:5 },
+    confident: { windGood:20, windMarg:28, ceilGood:1800, ceilMarg:1000, visGood:8,  visMarg:5 },
+  },
+  ifr: {
+    cautious:  { windGood:12, windMarg:22, ceilGood:1500, ceilMarg:600, visGood:8, visMarg:3 },
+    standard:  { windGood:18, windMarg:28, ceilGood:1000, ceilMarg:400, visGood:5, visMarg:2 },
+    confident: { windGood:22, windMarg:32, ceilGood:700,  ceilMarg:250, visGood:3, visMarg:1.5 },
+  },
 };
+function PRESETS(){ return PRESET_SETS[flightRules]; }
 function applyPreset(name){
-  const p = PRESETS[name]; if(!p) return;
+  const p = PRESETS()[name]; if(!p) return;
   for(const k in p) document.getElementById(k).value = p[k];
   document.querySelectorAll(".preset").forEach(b =>
     b.classList.toggle("is-active", b.dataset.preset===name));
   if(lastFetch.length) reassess();
+}
+// which preset (if any) is currently active, so a mode switch can re-apply it
+function activePresetName(){
+  const b=document.querySelector(".preset.is-active");
+  return b ? b.dataset.preset : "standard";
 }
 
 /* ---- Airfields ------------------------------------------------------- */
@@ -727,6 +752,28 @@ function tafCloud(fcsts, m){
   return { text:Math.round(ceil).toLocaleString("en-GB"), unit:"ft", cls };
 }
 
+/* Convection and icing in the TAF window: the hazards that stop an IFR flight
+   regardless of cloud or visibility. Returns a list of plain-English hazards,
+   or null if none. CB/TCU cloud counts as convection even without a TS group. */
+function tafHazards(fcsts){
+  if(!fcsts || !fcsts.length) return null;
+  const [tFrom,tTo]=windowEpoch();
+  const sel=fcsts.filter(f=>f.to>tFrom && f.from<tTo);
+  if(!sel.length) return null;
+  let ts=false, fz=false, cb=false;
+  sel.forEach(f=>{
+    const wxs=f.wxString||f.wx||"";
+    if(/TS/.test(wxs)) ts=true;
+    if(/FZ/.test(wxs)) fz=true;
+    (f.clouds||[]).forEach(c=>{ if(/CB|TCU/.test(c.cover||"")||/CB|TCU/.test((c.type||""))) cb=true; });
+  });
+  const out=[];
+  if(ts) out.push("thunderstorms");
+  if(cb && !ts) out.push("convective cloud (CB/TCU)");
+  if(fz) out.push("freezing conditions");
+  return out.length ? out : null;
+}
+
 /* ---- Assess: forecast model (fallback) ------------------------------- */
 function compassPoint(deg){
   if(deg==null||isNaN(deg)) return "";
@@ -807,6 +854,18 @@ function reassess(){
       }
     }
     if(alarm) tafUsed=true;  // an alarm also means the TAF informed this card
+
+    // In IFR mode, convection and icing are the stoppers regardless of cloud
+    // and visibility. Flag them prominently and force the verdict down.
+    if(flightRules==="ifr" && r.fcsts){
+      const hz=tafHazards(r.fcsts);
+      if(hz){
+        a.hazard = hz.join(", ");
+        a.level = "poor";
+        a.score += 500;
+        tafUsed=true;
+      }
+    }
     return { dest:r.dest, dist:r.dist, a, metar:r.metar, taf:r.taf, tafUsed };
   }).filter(r=>r.a);
   lastTafUsedCount = rows.filter(r=>r.tafUsed).length;
@@ -898,8 +957,12 @@ function render(rows){
         + (r.taf?`<pre><span class="tag">TAF</span>${r.taf}</pre>`:"")
         + `</details>`;
     }
+    const dayWord = dayOffset===0 ? "today" : "tomorrow";
+    const hazardNote = a.hazard
+      ? `<div class="hazard">IFR hazard: ${a.hazard} forecast in the window. This is a stop regardless of cloud or visibility. Check the raw TAF, and remember this tool sees no icing levels aloft.</div>`
+      : "";
     const alarmNote = a.alarm
-      ? `<div class="alarm sev${a.alarm.sev}">The TAF flags ${a.alarm.reason} during part of tomorrow. Read the raw TAF below before relying on this.</div>`
+      ? `<div class="alarm sev${a.alarm.sev}">The TAF flags ${a.alarm.reason} during part of ${dayWord}. Read the raw TAF below before relying on this.</div>`
       : "";
     // Source pill: model drives the verdict. Say "+ TAF" only when the TAF
     // actually reached the day window and informed this card.
@@ -916,6 +979,7 @@ function render(rows){
         </div>
       </div>
       <div class="metrics">${metrics}</div>
+      ${hazardNote}
       ${alarmNote}
       ${raw}`;
     cards.appendChild(el);
@@ -1093,6 +1157,15 @@ document.querySelectorAll("#dayToggle button").forEach(b=>{
     dayOffset=parseInt(b.dataset.day,10);
     document.querySelectorAll("#dayToggle button").forEach(x=>x.classList.toggle("on",x===b));
     load();
+  });
+});
+document.querySelectorAll("#rulesToggle button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    flightRules=b.dataset.rules;
+    document.querySelectorAll("#rulesToggle button").forEach(x=>x.classList.toggle("on",x===b));
+    document.getElementById("rulesNote").hidden = (flightRules!=="ifr");
+    // re-apply the active preset under the new mode's thresholds, then re-judge
+    applyPreset(activePresetName());
   });
 });
 document.querySelectorAll(".preset").forEach(btn=>{
