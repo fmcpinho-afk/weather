@@ -854,6 +854,16 @@ function windowEpoch(){
   return [s.getTime()/1000, e.getTime()/1000];
 }
 function chunk(a,n){const o=[];for(let i=0;i<a.length;i+=n)o.push(a.slice(i,i+n));return o;}
+// Run async tasks a few at a time (gentle on the weather services), never
+// throwing: a failed task yields null and the rest carry on.
+async function runLimited(tasks, limit){
+  const results=new Array(tasks.length); let i=0;
+  async function worker(){
+    while(i<tasks.length){ const idx=i++; try{ results[idx]=await tasks[idx](); }catch(e){ results[idx]=null; } }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,tasks.length||1)}, worker));
+  return results;
+}
 function fetchT(url,ms){ // fetch that gives up after `ms` instead of hanging
   const c=new AbortController();
   const id=setTimeout(()=>c.abort(),ms||12000);
@@ -1263,17 +1273,15 @@ function render(rows){
 /* ---- Real weather: via our own serverless function (avoids browser CORS) */
 async function fetchWx(ids){
   if(!ids.length) return {};
-  try{
-    const batches=chunk(ids,50);  // keep each request's id list short and reliable
-    const parts=await Promise.all(batches.map(async b=>{
-      const res=await fetchT("/.netlify/functions/wx?ids="+encodeURIComponent(b.join(",")));
-      if(!res.ok) throw 0;
-      return await res.json();
-    }));
-    const out=Object.assign({},...parts);
-    if(!out||!Object.keys(out).length) wxModelOnly=true;
-    return out;
-  }catch(e){ wxModelOnly=true; return {}; }
+  const batches=chunk(ids,50);
+  const parts=await runLimited(batches.map(b=>async()=>{
+    const res=await fetchT("/.netlify/functions/wx?ids="+encodeURIComponent(b.join(",")),15000);
+    if(!res.ok) throw 0;
+    return await res.json();
+  }), 4);
+  const out=Object.assign({},...parts.filter(Boolean));
+  if(!Object.keys(out).length) wxModelOnly=true;   // none answered: stay on the model
+  return out;
 }
 
 /* ---- Load ------------------------------------------------------------ */
@@ -1303,23 +1311,26 @@ async function load(){
   const modelByName={};
   try{
     const batches=chunk(inRange,25);
-    const parts=await Promise.all(batches.map(async batch=>{
+    const settled=await runLimited(batches.map(batch=>async()=>{
       const url="https://api.open-meteo.com/v1/forecast?latitude="+batch.map(a=>a.lat).join(",")
         +"&longitude="+batch.map(a=>a.lon).join(",")
         +"&hourly=cloud_cover_low,visibility,precipitation_probability,wind_gusts_10m,wind_speed_10m,wind_direction_10m"
         +"&wind_speed_unit=kn&timezone=auto&forecast_days=2";
-      const res=await fetchT(url);
+      const res=await fetchT(url,15000);
       if(!res.ok) throw new Error("model");
       const j=await res.json();
       return {batch, arr:Array.isArray(j)?j:[j]};
-    }));
-    parts.forEach(({batch,arr})=>{
-      arr.forEach((loc,i)=>{
-        const d=batch[i], times=loc.hourly.time, idxs=[];
+    }), 5);
+    settled.forEach(s=>{
+      if(!s) return;                              // a failed batch: skip, keep the rest
+      s.arr.forEach((loc,i)=>{
+        const d=s.batch[i]; if(!loc||!loc.hourly) return;
+        const times=loc.hourly.time, idxs=[];
         times.forEach((ts,k)=>{ if(ts.slice(0,10)===tmrw){const hr=+ts.slice(11,13); if(hr>=8&&hr<=18) idxs.push(k);} });
         modelByName[d.name]={hourly:loc.hourly, idxs};
       });
     });
+    if(!Object.keys(modelByName).length) throw new Error("all batches failed");
   }catch(e){
     status.innerHTML='<span class="err">Couldn\'t reach the forecast service just now. Check your connection and tap Refresh.</span>';
     return;
