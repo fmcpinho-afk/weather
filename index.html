@@ -1169,7 +1169,10 @@ function drawMap(rows){
 function render(rows){
   const cards=document.getElementById("cards");
   cards.innerHTML="";
-  rows.sort((a,b)=>a.a.score-b.a.score);
+  // Sort by verdict first (good, then marginal, then poor) so the colours come
+  // out in clean bands, then by the finer score within each band (calmest first).
+  const rank={good:0,marginal:1,poor:2};
+  rows.sort((a,b)=> (rank[a.a.level]-rank[b.a.level]) || (a.a.score-b.a.score));
   rows.forEach((r,i)=>{
     const a=r.a, d=r.dest;
     const el=document.createElement("div");
