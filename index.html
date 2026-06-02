@@ -977,6 +977,27 @@ function tafCloud(fcsts, m){
   return { text:Math.round(ceil).toLocaleString("en-GB"), unit:"ft", cls };
 }
 
+/* Worst (lowest) visibility the TAF forecasts in the window, in km, for the Vis
+   box. Mirrors how cloud and weather already switch to the TAF where it exists. */
+function tafVis(fcsts, m){
+  if(!fcsts || !fcsts.length) return null;
+  const [tFrom,tTo]=windowEpoch();
+  const sel=fcsts.filter(f=>f.to>tFrom && f.from<tTo);
+  if(!sel.length) return null;
+  let vis=null;
+  sel.forEach(f=>{
+    if(f.visib!=null){
+      const raw=String(f.visib).trim(); let km=null;
+      if(/^\d{3,}$/.test(raw)){ const mv=parseInt(raw,10); km=mv>=9999?999:mv/1000; } // metres; 9999 = 10km+
+      else { const v=parseFloat(raw.replace("+","")); if(!isNaN(v)) km = raw.includes("+")?999:v*1.609; } // statute miles
+      if(km!=null && (vis===null||km<vis)) vis=km;
+    }
+  });
+  if(vis===null) return null;   // TAF didn't state a visibility: leave the model's in place
+  const cls = vis>=m.visGood ? "g" : vis>=m.visMarg ? "m" : "p";
+  return { text: vis>=999 ? "10+" : vis.toFixed(0), unit:"km", cls };
+}
+
 /* Convection and icing in the TAF window: the hazards that stop an IFR flight
    regardless of cloud or visibility. Returns a list of plain-English hazards,
    or null if none. CB/TCU cloud counts as convection even without a TS group. */
@@ -1076,6 +1097,12 @@ function reassess(){
         const lowIdx=a.metrics.findIndex(mt=>mt.k==="Low cloud");
         const cBox={k:"Cloud base",v:c.text,unit:c.unit||"",cls:c.cls};
         if(lowIdx>=0) a.metrics[lowIdx]=cBox; else a.metrics.push(cBox);
+      }
+      const vz=tafVis(r.fcsts, m);
+      if(vz){
+        tafUsed=true;
+        const visIdx=a.metrics.findIndex(mt=>mt.k==="Vis");
+        if(visIdx>=0) a.metrics[visIdx]={k:"Vis",v:vz.text,unit:vz.unit,cls:vz.cls};
       }
     }
     if(alarm) tafUsed=true;  // an alarm also means the TAF informed this card
