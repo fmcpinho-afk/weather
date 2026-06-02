@@ -88,6 +88,18 @@
   .daytoggle button.on{background:var(--amber);color:#fff}
   .daytoggle button:hover:not(.on){color:var(--ink)}
   .updated{font-size:.72rem;color:var(--muted);margin:2px 2px 0;letter-spacing:.02em}
+  .mapwrap{position:relative;margin:16px 0 4px;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow)}
+  .mapwrap svg{width:100%;height:auto;display:block;border-radius:8px}
+  .map-dot{cursor:pointer;transition:r .1s ease}
+  .map-dot:hover{stroke:var(--ink);stroke-width:1.5}
+  .map-home{fill:none;stroke:var(--amber);stroke-width:2}
+  .map-tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;
+    font-size:.72rem;padding:5px 9px;border-radius:7px;white-space:nowrap;transform:translate(-50%,-130%);z-index:5}
+  .map-legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;
+    margin-top:8px;font-size:.7rem;color:var(--muted)}
+  .map-legend span{display:inline-flex;align-items:center;gap:5px}
+  .map-legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;
     background:var(--line);border-radius:2px;outline:none;cursor:pointer}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
@@ -259,6 +271,16 @@
 
   <div class="status" id="status"><span class="dot"></span>Loading…</div>
   <div class="updated" id="updated"></div>
+  <div class="mapwrap" id="mapwrap" hidden>
+    <svg id="map" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Map of airfields"></svg>
+    <div class="map-tip" id="mapTip" hidden></div>
+    <div class="map-legend">
+      <span><i style="background:var(--good)"></i> Looks good</span>
+      <span><i style="background:var(--marginal)"></i> Marginal</span>
+      <span><i style="background:var(--poor)"></i> Probably not</span>
+      <span><i style="background:none;border:2px solid var(--amber)"></i> Your start point</span>
+    </div>
+  </div>
   <div class="cards" id="cards"></div>
 
   <footer>
@@ -785,6 +807,56 @@ function reassess(){
   render(rows);
 }
 
+/* ---- Map: plot in-range airfields as coloured dots ------------------- */
+function drawMap(rows){
+  const wrap=document.getElementById("mapwrap");
+  const svg=document.getElementById("map");
+  if(!rows.length){ wrap.hidden=true; return; }
+  wrap.hidden=false;
+
+  const W=800, H=520, pad=46;
+  // Equirectangular with longitude scaled by cos(mean lat) so shapes aren't smeared.
+  const lats=rows.map(r=>r.dest.lat).concat(home.lat);
+  const lons=rows.map(r=>r.dest.lon).concat(home.lon);
+  const meanLat=(Math.max(...lats)+Math.min(...lats))/2;
+  const kx=Math.cos(meanLat*Math.PI/180);
+  const minX=Math.min(...lons)*kx, maxX=Math.max(...lons)*kx;
+  const minY=Math.min(...lats), maxY=Math.max(...lats);
+  const spanX=(maxX-minX)||0.1, spanY=(maxY-minY)||0.1;
+  const scale=Math.min((W-2*pad)/spanX,(H-2*pad)/spanY);
+  const cx=(W-scale*spanX)/2, cy=(H-scale*spanY)/2;
+  const px=lon=>cx+(lon*kx-minX)*scale;
+  const py=lat=>H-(cy+(lat-minY)*scale);   // invert: north up
+
+  const col={good:"var(--good)",marginal:"var(--marginal)",poor:"var(--poor)"};
+  let svgInner="";
+  svgInner+=`<circle class="map-home" cx="${px(home.lon).toFixed(1)}" cy="${py(home.lat).toFixed(1)}" r="9"/>`;
+  // worst drawn first so good dots sit on top and stay visible
+  const ordered=rows.slice().sort((a,b)=>b.a.score-a.a.score);
+  ordered.forEach(r=>{
+    const x=px(r.dest.lon).toFixed(1), y=py(r.dest.lat).toFixed(1);
+    svgInner+=`<circle class="map-dot" cx="${x}" cy="${y}" r="6" fill="${col[r.a.level]}" `
+      +`data-name="${r.dest.name.replace(/"/g,'')}" data-level="${r.a.level}"/>`;
+  });
+  svg.innerHTML=svgInner;
+
+  const tip=document.getElementById("mapTip");
+  const verdictWord=l=>l==="good"?"Looks good":l==="marginal"?"Marginal":"Probably not";
+  svg.querySelectorAll(".map-dot").forEach(dot=>{
+    const show=()=>{
+      const r=svg.getBoundingClientRect();
+      const sx=r.width/800, sy=r.height/520;
+      tip.textContent=dot.dataset.name+" · "+verdictWord(dot.dataset.level);
+      tip.style.left=(parseFloat(dot.getAttribute("cx"))*sx)+"px";
+      tip.style.top=(parseFloat(dot.getAttribute("cy"))*sy)+"px";
+      tip.hidden=false;
+    };
+    dot.addEventListener("mouseenter",show);
+    dot.addEventListener("click",show);
+    dot.addEventListener("mouseleave",()=>{tip.hidden=true;});
+  });
+}
+
 /* ---- Render ---------------------------------------------------------- */
 function render(rows){
   const cards=document.getElementById("cards");
@@ -828,6 +900,7 @@ function render(rows){
       ${raw}`;
     cards.appendChild(el);
   });
+  drawMap(rows);
 }
 
 /* ---- Real weather: via our own serverless function (avoids browser CORS) */
