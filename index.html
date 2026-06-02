@@ -209,6 +209,47 @@
     border:1px solid var(--line);padding:4px 10px;border-radius:999px}
   .help-link:hover{border-color:var(--amber)}
   .eyebrow{justify-content:flex-start}
+
+  .tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--line)}
+  .tabs button{background:none;border:none;cursor:pointer;padding:10px 4px;margin-right:18px;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;letter-spacing:.04em;
+    color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs button:hover{color:var(--ink)}
+  .tabs button.on{color:var(--amber);border-bottom-color:var(--amber)}
+
+  .wl-title{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(2rem,6vw,3.4rem);
+    line-height:1.02;letter-spacing:-.01em;margin-bottom:14px}
+  .wl-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:22px 0 6px}
+  .wl-add input{flex:1;min-width:160px;font-family:"Spline Sans Mono",monospace;font-size:.9rem;
+    text-transform:uppercase;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+    background:var(--panel);color:var(--ink)}
+  .wl-add input:focus{outline:none;border-color:var(--amber)}
+  .wl-count{font-size:.74rem;color:var(--muted)}
+  .wl-msg{font-size:.8rem;color:var(--poor);min-height:1em;margin:4px 2px}
+  .wl-list{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+  .wl-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px 20px;box-shadow:var(--shadow)}
+  .wl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .wl-name{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .wl-code{font-size:.74rem;color:var(--muted);letter-spacing:.04em}
+  .wl-remove{background:none;border:1px solid var(--line);color:var(--muted);cursor:pointer;
+    border-radius:8px;padding:5px 10px;font-family:"Spline Sans Mono",monospace;font-size:.72rem}
+  .wl-remove:hover{border-color:var(--poor);color:var(--poor)}
+  .wl-days{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin:16px 0 4px;
+    background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .wl-day{background:var(--panel-2);padding:9px 4px;text-align:center}
+  .wl-day .d{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .wl-day .ico{font-size:1.1rem;margin:3px 0}
+  .wl-day .g{font-size:.66rem;margin-top:2px}
+  .wl-day.good{box-shadow:inset 0 -3px 0 var(--good)}
+  .wl-day.marginal{box-shadow:inset 0 -3px 0 var(--marginal)}
+  .wl-day.poor{box-shadow:inset 0 -3px 0 var(--poor)}
+  @media(max-width:560px){.wl-days{grid-template-columns:repeat(4,1fr)}}
+  .wl-note{width:100%;margin-top:12px;font-family:"Spline Sans Mono",monospace;font-size:.82rem;
+    line-height:1.5;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+    background:var(--bg);color:var(--ink);resize:vertical;min-height:46px}
+  .wl-note:focus{outline:none;border-color:var(--amber)}
+  .wl-note-saved{font-size:.68rem;color:var(--good);margin-top:4px;height:1em}
 </style>
 </head>
 <body>
@@ -219,6 +260,12 @@
     <p class="sub">A read of the weather across the airfields within range, sorted by what looks most flyable. Pick today or tomorrow. Verdicts come from the forecast model, cross-checked against real TAFs where they exist. A starting point, not a flight plan.</p>
   </header>
 
+  <div class="tabs" id="tabs">
+    <button data-tab="forecast" class="on">Forecast</button>
+    <button data-tab="watchlist">Watchlist</button>
+  </div>
+
+  <div id="view-forecast">
   <div class="controls">
     <div class="from">
       <span class="lbl">From</span>
@@ -303,6 +350,20 @@
   <footer>
     <strong>This is a glance at the forecast, not a flight plan.</strong> Where a TAF exists it's used and shown in full, but it knows nothing about NOTAMs, airspace, PPR or runway state, and small strips have no TAF at all, so those fall back to a general weather model. Read the raw TAF, check NOTAMs, and re-check on the day before you commit to anything.
   </footer>
+  </div><!-- /view-forecast -->
+
+  <div id="view-watchlist" hidden>
+    <h1 class="wl-title">Watchlist</h1>
+    <p class="sub">Up to five places you're keeping an eye on for a piece, with a few days' outlook each so you can spot a good window. Add them by airport code.</p>
+    <div class="wl-add">
+      <input type="text" id="wlInput" placeholder="Airport code, e.g. LFAT" autocomplete="off" maxlength="4">
+      <button id="wlAdd">Add</button>
+      <span class="wl-count" id="wlCount"></span>
+    </div>
+    <div class="wl-msg" id="wlMsg"></div>
+    <div class="wl-list" id="wlList"></div>
+  </div>
+
 </div>
 
 <script>
@@ -1179,7 +1240,136 @@ document.querySelectorAll(".preset").forEach(btn=>{
   });
 });
 
+/* ---- Watchlist ------------------------------------------------------- */
+const WL_KEY="wcif_watch_v1";
+let watch=[];   // [{icao,name,lat,lon,note}]
+
+function loadWatch(){
+  try{ const raw=localStorage.getItem(WL_KEY); if(raw){ const a=JSON.parse(raw); if(Array.isArray(a)) watch=a.slice(0,5); } }catch(e){}
+}
+function saveWatch(){ try{ localStorage.setItem(WL_KEY, JSON.stringify(watch)); }catch(e){} }
+
+// WMO daily weather code -> short condition + severity (0 good,1 marginal,2 poor)
+function decodeWmo(code){
+  const c=+code;
+  if(c===0) return {t:"Clear",sev:0};
+  if(c<=2) return {t:"Fair",sev:0};
+  if(c===3) return {t:"Cloudy",sev:0};
+  if(c===45||c===48) return {t:"Fog",sev:2};
+  if(c>=51&&c<=57) return {t:"Drizzle",sev:1};
+  if(c>=61&&c<=67) return {t:"Rain",sev:1};
+  if(c>=71&&c<=77) return {t:"Snow",sev:2};
+  if(c>=80&&c<=82) return {t:"Showers",sev:1};
+  if(c>=85&&c<=86) return {t:"Snow",sev:2};
+  if(c>=95) return {t:"Storm",sev:2};
+  return {t:"—",sev:0};
+}
+
+async function resolveDest(icao){
+  icao=icao.toUpperCase().trim();
+  const inList=airfields.find(a=>a.icao && a.icao.toUpperCase()===icao);
+  if(inList) return {icao, name:inList.name, lat:inList.lat, lon:inList.lon};
+  // fallback: ask the weather function for the station's coordinates
+  try{
+    const res=await fetchT("/.netlify/functions/wx?ids="+encodeURIComponent(icao));
+    const j=await res.json();
+    const d=j[icao];
+    if(d && d.lat!=null && d.lon!=null) return {icao, name:d.name||icao, lat:d.lat, lon:d.lon};
+  }catch(e){}
+  return null;
+}
+
+async function fetchOutlook(w, daysEl){
+  try{
+    const url="https://api.open-meteo.com/v1/forecast?latitude="+w.lat+"&longitude="+w.lon
+      +"&daily=weather_code,wind_gusts_10m_max&wind_speed_unit=kn&timezone=auto&forecast_days=7";
+    const res=await fetchT(url);
+    const j=await res.json();
+    const d=j.daily; const m=mins();
+    let html="";
+    d.time.forEach((iso,i)=>{
+      const dow=new Date(iso+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short"});
+      const wmo=decodeWmo(d.weather_code[i]);
+      const gust=Math.round(d.wind_gusts_10m_max[i]);
+      const windL=gust<=m.windGood?0:gust<=m.windMarg?1:2;
+      const lvl=["good","marginal","poor"][Math.max(wmo.sev,windL)];
+      html+=`<div class="wl-day ${lvl}"><div class="d">${dow}</div><div class="g">${wmo.t}</div><div class="g">${gust} kt</div></div>`;
+    });
+    daysEl.innerHTML=html;
+  }catch(e){
+    daysEl.innerHTML='<div class="wl-msg" style="color:var(--poor);grid-column:1/-1">Couldn\'t load the outlook just now.</div>';
+  }
+}
+
+function renderWatch(){
+  const list=document.getElementById("wlList");
+  document.getElementById("wlCount").textContent=watch.length+" of 5";
+  document.getElementById("wlAdd").disabled = watch.length>=5;
+  if(!watch.length){
+    list.innerHTML='<div class="wl-msg" style="color:var(--muted)">Nothing yet. Add a place by its airport code above.</div>';
+    return;
+  }
+  list.innerHTML="";
+  watch.forEach((w,idx)=>{
+    const card=document.createElement("div"); card.className="wl-card";
+    card.innerHTML=`
+      <div class="wl-head">
+        <div><div class="wl-name">${w.name}</div><div class="wl-code">${w.icao}</div></div>
+        <button class="wl-remove" data-i="${idx}">Remove</button>
+      </div>
+      <div class="wl-days" data-days="${idx}"><div class="wl-msg" style="color:var(--muted);grid-column:1/-1">Loading outlook…</div></div>
+      <textarea class="wl-note" data-note="${idx}" placeholder="Notes for your article…"></textarea>
+      <div class="wl-note-saved" data-saved="${idx}"></div>`;
+    list.appendChild(card);
+    card.querySelector(".wl-note").value = w.note||"";
+    fetchOutlook(w, card.querySelector('[data-days="'+idx+'"]'));
+  });
+}
+
+async function addWatch(){
+  const msg=document.getElementById("wlMsg");
+  const input=document.getElementById("wlInput");
+  const code=input.value.toUpperCase().trim();
+  msg.style.color="var(--poor)";
+  if(!code){ return; }
+  if(watch.length>=5){ msg.textContent="That's the five-place limit. Remove one to add another."; return; }
+  if(watch.some(w=>w.icao===code)){ msg.textContent=code+" is already on your watchlist."; return; }
+  msg.style.color="var(--muted)"; msg.textContent="Looking up "+code+"…";
+  const d=await resolveDest(code);
+  if(!d){ msg.style.color="var(--poor)"; msg.textContent="Couldn't find "+code+". Check the code, or it may be a field with no weather data."; return; }
+  msg.textContent=""; input.value="";
+  watch.push({icao:d.icao, name:d.name, lat:d.lat, lon:d.lon, note:""});
+  saveWatch(); renderWatch();
+}
+
+document.getElementById("wlAdd").addEventListener("click",addWatch);
+document.getElementById("wlInput").addEventListener("keydown",e=>{ if(e.key==="Enter") addWatch(); });
+document.getElementById("wlList").addEventListener("click",e=>{
+  const rm=e.target.closest(".wl-remove"); if(!rm) return;
+  watch.splice(+rm.dataset.i,1); saveWatch(); renderWatch();
+});
+document.getElementById("wlList").addEventListener("input",e=>{
+  const ta=e.target.closest(".wl-note"); if(!ta) return;
+  const i=+ta.dataset.note; if(!watch[i]) return;
+  watch[i].note=ta.value; saveWatch();
+  const s=document.querySelector('[data-saved="'+i+'"]');
+  if(s){ s.textContent="Saved"; clearTimeout(s._t); s._t=setTimeout(()=>s.textContent="",1200); }
+});
+
+/* ---- Tabs ------------------------------------------------------------ */
+document.querySelectorAll("#tabs button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    const t=b.dataset.tab;
+    document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));
+    document.getElementById("view-forecast").hidden = t!=="forecast";
+    document.getElementById("view-watchlist").hidden = t!=="watchlist";
+    if(t==="watchlist") renderWatch();
+    if(t==="forecast" && _map) setTimeout(()=>_map.invalidateSize(),0);
+  });
+});
+
 loadSavedHome();
+loadWatch();
 load();
 </script>
 </body>
