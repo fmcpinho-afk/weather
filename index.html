@@ -327,9 +327,14 @@ const levelFrom = ls => { const w=Math.max(...ls), sum=ls.reduce((a,b)=>a+b,0);
 
 /* ---- Assess: real TAF ------------------------------------------------ */
 function assessTaf(fcsts, m){
-  const [from,to]=windowEpoch();
-  const sel=(fcsts||[]).filter(f=>f.to>from && f.from<to);
-  if(!sel.length) return null;                       // TAF doesn't reach tomorrow's window
+  if(!fcsts || !fcsts.length) return null;
+  // Prefer tomorrow's daytime window, but if the TAF doesn't reach that far,
+  // use whatever periods the TAF actually covers. A TAF that exists at all
+  // should produce a verdict, not silently fall back to the model.
+  const [tFrom,tTo]=windowEpoch();
+  let sel=fcsts.filter(f=>f.to>tFrom && f.from<tTo);
+  if(!sel.length) sel=fcsts.slice();
+  if(!sel.length) return null;
 
   let gust=0, ceil=Infinity, vis=null, wxFlag=0, wxTxt="Clear";
   sel.forEach(f=>{
@@ -347,9 +352,10 @@ function assessTaf(fcsts, m){
         }
         if(km!=null && (vis===null||km<vis)) vis=km;
       }
-      if(f.wxString){ wxTxt=f.wxString;
-        if(/TS|FG|FZ/.test(f.wxString)) wxFlag=Math.max(wxFlag,2);
-        else if(/RA|SN|SH|DZ|GR|PL/.test(f.wxString)) wxFlag=Math.max(wxFlag,1); }
+      const wxs=f.wxString||f.wx;
+      if(wxs){ wxTxt=wxs;
+        if(/TS|FG|FZ/.test(wxs)) wxFlag=Math.max(wxFlag,2);
+        else if(/RA|SN|SH|DZ|GR|PL/.test(wxs)) wxFlag=Math.max(wxFlag,1); }
     }catch(e){ /* skip a malformed period rather than voiding the TAF */ }
   });
 
