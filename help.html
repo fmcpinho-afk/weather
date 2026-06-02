@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How this works · Where can I fly tomorrow?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f6f4ef; --panel-2:#efece4; --ink:#16202a;
+    --muted:#6b7a85; --line:#e4ded3; --amber:#bf7414; --amber-soft:#bf741418;
+    --good:#1f9d57; --marginal:#bd8410; --poor:#cf4747;
+    --good-soft:#1f9d5714; --marginal-soft:#bd841016; --poor-soft:#cf474714;
+    --shadow:0 1px 2px rgba(22,32,42,.04),0 8px 24px rgba(22,32,42,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:
+      radial-gradient(1100px 520px at 85% -12%, #fbf3e6 0%, transparent 60%),
+      radial-gradient(820px 460px at -8% 108%, #eef3f5 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Spline Sans Mono",ui-monospace,monospace;
+    min-height:100vh;line-height:1.65;
+    padding:clamp(20px,5vw,56px) clamp(16px,5vw,40px) 80px;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  .eyebrow{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--amber);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--amber)}
+  h1{font-family:"Fraunces",serif;font-weight:600;
+    font-size:clamp(1.8rem,5vw,2.8rem);line-height:1.05;letter-spacing:-.01em;margin-bottom:10px}
+  .lede{color:var(--muted);font-size:.95rem;margin-bottom:8px}
+  .back{display:inline-block;margin-bottom:30px;font-size:.8rem;color:var(--amber);text-decoration:none}
+  .back:hover{text-decoration:underline}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.4rem;
+    margin:38px 0 12px;letter-spacing:-.01em}
+  p{margin:0 0 14px;font-size:.92rem}
+  a{color:var(--amber)}
+  strong{font-weight:600}
+  .callout{background:var(--poor-soft);border:1px solid var(--poor);border-radius:12px;
+    padding:18px 20px;margin:24px 0}
+  .callout h2{margin-top:0;color:var(--poor)}
+  .callout p:last-child{margin-bottom:0}
+  .tags{display:flex;flex-direction:column;gap:10px;margin:8px 0 18px}
+  .tagrow{display:flex;gap:12px;align-items:flex-start;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pill{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;
+    border-radius:999px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+  .pill.good{background:var(--good-soft);color:var(--good)}
+  .pill.marginal{background:var(--marginal-soft);color:var(--marginal)}
+  .pill.poor{background:var(--poor-soft);color:var(--poor)}
+  .pill.src{border:1px solid var(--amber);color:var(--amber)}
+  .pill.srcm{border:1px solid var(--line);color:var(--muted)}
+  .tagrow span:last-child{font-size:.88rem}
+  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);
+    font-size:.82rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Fernando's Logbook</div>
+  <h1>How this works</h1>
+  <p class="lede">A two-minute read before you trust anything on the screen.</p>
+  <a href="index.html" class="back">← Back to the map</a>
+
+  <div class="callout">
+    <h2>Read this first</h2>
+    <p>This tool tells you where the weather looks promising for a flight tomorrow. That is all it does. It is a starting point for a conversation with yourself, not a clearance to go.</p>
+    <p>It knows nothing about NOTAMs, airspace, whether a field needs prior permission, runway state, your own currency, or the weather between you and your destination. A green card is an invitation to plan properly, not a reason to skip the planning.</p>
+  </div>
+
+  <h2>What it actually does</h2>
+  <p>Every airfield within the range you set gets checked against tomorrow's forecast. The cards are then sorted so the most promising weather sits at the top. You set how far to look with the radius slider, and you can start from Cambridge or tap "Use my location" to start from where you are.</p>
+
+  <h2>Where the weather comes from</h2>
+  <p>For the larger fields that issue a proper forecast, the tool reads the real <strong>TAF</strong>, the official aviation forecast for that aerodrome. For the many smaller strips that don't issue one, it falls back to a general weather model instead. Each card tells you which it used:</p>
+
+  <div class="tags">
+    <div class="tagrow"><span class="pill src">TAF</span><span>Real aviation forecast for that aerodrome. Trust this more.</span></div>
+    <div class="tagrow"><span class="pill srcm">Model</span><span>A general weather model standing in where no TAF exists. A reasonable guess, not an aviation product.</span></div>
+  </div>
+
+  <p>On every card you can open the raw report to read the full METAR and TAF yourself, in their proper coded form. If you read them fluently, that is the bit to trust over my plain-English summary.</p>
+
+  <h2>The verdicts</h2>
+  <p>Each card carries one of three readings. They describe the forecast, not your abilities, and they are deliberately blunt:</p>
+
+  <div class="tags">
+    <div class="tagrow"><span class="pill good">Looks good</span><span>The forecast sits comfortably inside the limits you picked.</span></div>
+    <div class="tagrow"><span class="pill marginal">Marginal</span><span>Flyable for some, not for others. Worth a proper look before you decide.</span></div>
+    <div class="tagrow"><span class="pill poor">Probably not</span><span>Something in the forecast is past sensible limits. Strong gusts, low cloud, poor visibility, or a thunderstorm.</span></div>
+  </div>
+
+  <h2>The numbers on each card</h2>
+  <p>Four figures summarise the day. <strong>Gust</strong> is the strongest gust forecast, in knots. <strong>Ceiling</strong> is the height of the lowest broken or overcast cloud, in feet, so a low number means low cloud. <strong>Visibility</strong> is the poorest forecast, in kilometres. <strong>Weather</strong> spells out anything significant in plain English, with the worst of the day shown, so a passing thunderstorm won't hide behind a calm afternoon.</p>
+  <p>The distance and rough flight time on each card assume a steady cruise, so treat them as planning figures rather than anything precise.</p>
+
+  <h2>How cautious today?</h2>
+  <p>The three presets, Cautious, Standard and Confident, change where the line sits between a good day and a marginal one. Cautious wants calm and clear. Confident is happy with a bit more wind or a lower cloudbase.</p>
+  <p>One thing worth knowing: the presets change your appetite for middling days, not your exposure to bad ones. A day with thunderstorms or a very low ceiling reads "Probably not" on all three settings. Confident never dresses up dangerous weather as merely marginal. If you want to set exact limits of your own, "Fine-tune the numbers" under the presets lets you.</p>
+
+  <h2>If something looks wrong</h2>
+  <p>If a card sits on "Model" when you'd expect a TAF, that field may simply not issue one, or its forecast may not reach tomorrow's window yet. If the whole page won't load, give it a moment and refresh. The forecast services it relies on are free and occasionally busy.</p>
+
+  <footer>
+    Built for <a href="index.html">Where can I fly tomorrow?</a>, part of Fernando's Logbook. Always check the official METARs, TAFs and NOTAMs, and re-check on the day, before you commit to a flight.
+  </footer>
+</div>
+</body>
+</html>

@@ -150,12 +150,16 @@
   footer strong{color:var(--ink);font-weight:600}
   .err{color:var(--poor)}
   a{color:var(--amber)}
+  .help-link{margin-left:auto;font-size:.68rem;letter-spacing:.12em;text-decoration:none;
+    border:1px solid var(--line);padding:4px 10px;border-radius:999px}
+  .help-link:hover{border-color:var(--amber)}
+  .eyebrow{justify-content:flex-start}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Fernando's Logbook</div>
+    <div class="eyebrow">Fernando's Logbook <a href="help.html" class="help-link">Help</a></div>
     <h1 id="title">Where can I fly tomorrow?</h1>
     <p class="sub">A read of tomorrow's weather across the airfields within range, sorted by what looks most flyable. Real TAFs where they exist, the forecast model where they don't. A starting point, not a flight plan.</p>
   </header>
