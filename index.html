@@ -612,6 +612,7 @@ function assessTaf(fcsts, m){
   let thin=false;
   if(!sel.length){ sel=fcsts.slice(); thin=true; }      // TAF ends before tomorrow: using its tail
   else if(covered < 0.5) thin=true;                      // only catches a sliver of the day
+  console.log("assessTaf: sel="+sel.length+" covered="+covered.toFixed(2)+" thin="+thin);
 
   if(!sel.length) return null;
 
