@@ -188,7 +188,7 @@
   <div class="controls">
     <div class="from">
       <span class="lbl">From</span>
-      <button class="from-btn" id="fromBtn"><span id="fromName">Cambridge</span> <span class="caret">▾</span></button>
+      <button class="from-btn" id="fromBtn"><span id="fromName">Duxford</span> <span class="caret">▾</span></button>
     </div>
     <div class="radius">
       <label for="radius">Within <b id="radiusVal">100</b> nm</label>
@@ -199,7 +199,7 @@
 
   <div class="locpanel" id="locPanel" hidden>
     <div class="loc-row">
-      <input type="text" id="locInput" placeholder="Town, airfield or postcode, e.g. Cambridge" autocomplete="off">
+      <input type="text" id="locInput" placeholder="Town, airfield or postcode, e.g. Duxford" autocomplete="off">
       <button id="locSearch">Search</button>
     </div>
     <button id="locGeo" class="ghost locgeo">Use my current location instead</button>
@@ -254,7 +254,7 @@
 
 <script>
 /* ---- State ----------------------------------------------------------- */
-let home = { name:"Cambridge", lat:52.205, lon:0.175 };
+let home = { name:"Duxford", lat:52.092, lon:0.132 };
 let radiusNm = 100;
 const MAX_SHOWN = 40;
 const CRUISE_KT = 150;
@@ -377,6 +377,155 @@ const airfields = [
   {name:"Caen",icao:"LFRK",lat:49.173,lon:-0.450},
   {name:"Lille",icao:"LFQQ",lat:50.563,lon:3.089},
   {name:"Ostend",icao:"EBOS",lat:51.199,lon:2.862},
+
+  /* --- More UK --- */
+  {name:"Liverpool",icao:"EGGP",lat:53.334,lon:-2.850},
+  {name:"Manchester",icao:"EGCC",lat:53.354,lon:-2.275},
+  {name:"East Midlands",icao:"EGNX",lat:52.831,lon:-1.328},
+  {name:"Birmingham",icao:"EGBB",lat:52.454,lon:-1.748},
+  {name:"Coventry",icao:"EGBE",lat:52.370,lon:-1.480},
+  {name:"Bristol",icao:"EGGD",lat:51.383,lon:-2.719},
+  {name:"Southampton",icao:"EGHI",lat:50.950,lon:-1.357},
+  {name:"Solent (Daedalus)",icao:"EGHF",lat:50.814,lon:-1.214},
+  {name:"Southend",icao:"EGMC",lat:51.571,lon:0.696},
+  {name:"London City",icao:"EGLC",lat:51.505,lon:0.055},
+  {name:"Wattisham",icao:"EGUW",lat:52.127,lon:0.956},
+  {name:"Humberside",icao:"EGNJ",lat:53.574,lon:-0.351},
+  {name:"Kirkbride",icao:"EGNL",lat:54.879,lon:-3.250},
+  {name:"Eshott",icao:"EGCT",lat:55.281,lon:-1.704},
+  {name:"Fife (Glenrothes)",icao:"EGPJ",lat:56.183,lon:-3.150},
+  {name:"Dornoch",icao:"EGED",lat:57.868,lon:-4.027},
+  {name:"Wick",icao:"EGPC",lat:58.459,lon:-3.093},
+  {name:"Belfast City",icao:"EGAC",lat:54.618,lon:-5.872},
+  {name:"Belfast Intl",icao:"EGAA",lat:54.658,lon:-6.216},
+  {name:"City of Derry",icao:"EGAE",lat:55.043,lon:-7.161},
+  {name:"Newtownards",icao:"EGAD",lat:54.581,lon:-5.692},
+
+  /* --- France (wider) --- */
+  {name:"Paris Le Bourget",icao:"LFPB",lat:48.969,lon:2.441},
+  {name:"Pontoise",icao:"LFPT",lat:49.097,lon:2.041},
+  {name:"Toussus-le-Noble",icao:"LFPN",lat:48.752,lon:2.106},
+  {name:"Chartres",icao:"LFOR",lat:48.058,lon:1.524},
+  {name:"Reims",icao:"LFQA",lat:49.310,lon:4.050},
+  {name:"Troyes",icao:"LFQB",lat:48.323,lon:4.167},
+  {name:"Amiens",icao:"LFAY",lat:49.873,lon:2.387},
+  {name:"Rennes",icao:"LFRN",lat:48.069,lon:-1.734},
+  {name:"Dinard",icao:"LFRD",lat:48.587,lon:-2.080},
+  {name:"Brest",icao:"LFRB",lat:48.448,lon:-4.418},
+  {name:"Lorient",icao:"LFRH",lat:47.761,lon:-3.440},
+  {name:"Nantes",icao:"LFRS",lat:47.157,lon:-1.611},
+  {name:"La Rochelle",icao:"LFBH",lat:46.179,lon:-1.195},
+  {name:"Tours",icao:"LFOT",lat:47.432,lon:0.728},
+  {name:"Le Mans",icao:"LFRM",lat:47.949,lon:0.202},
+  {name:"Angers",icao:"LFJR",lat:47.560,lon:-0.312},
+  {name:"Bordeaux",icao:"LFBD",lat:44.828,lon:-0.715},
+  {name:"Bergerac",icao:"LFBE",lat:44.825,lon:0.519},
+  {name:"Toulouse",icao:"LFBO",lat:43.629,lon:1.364},
+  {name:"Pau",icao:"LFBP",lat:43.380,lon:-0.419},
+  {name:"Biarritz",icao:"LFBZ",lat:43.468,lon:-1.531},
+  {name:"Limoges",icao:"LFBL",lat:45.863,lon:1.179},
+  {name:"Clermont-Ferrand",icao:"LFLC",lat:45.787,lon:3.169},
+  {name:"Lyon Bron",icao:"LFLY",lat:45.727,lon:4.944},
+  {name:"Lyon St-Exupéry",icao:"LFLL",lat:45.726,lon:5.091},
+  {name:"Grenoble",icao:"LFLS",lat:45.363,lon:5.329},
+  {name:"Annecy",icao:"LFLP",lat:45.929,lon:6.106},
+  {name:"Chambéry",icao:"LFLB",lat:45.638,lon:5.880},
+  {name:"Geneva (Cointrin)",icao:"LSGG",lat:46.238,lon:6.109},
+  {name:"Valence",icao:"LFLU",lat:44.922,lon:4.970},
+  {name:"Avignon",icao:"LFMV",lat:43.907,lon:4.902},
+  {name:"Montpellier",icao:"LFMT",lat:43.576,lon:3.963},
+  {name:"Marseille",icao:"LFML",lat:43.436,lon:5.215},
+  {name:"Aix-les-Milles",icao:"LFMA",lat:43.503,lon:5.368},
+  {name:"Cannes Mandelieu",icao:"LFMD",lat:43.542,lon:6.953},
+  {name:"Nice",icao:"LFMN",lat:43.665,lon:7.215},
+  {name:"Nîmes",icao:"LFTW",lat:43.757,lon:4.416},
+  {name:"Perpignan",icao:"LFMP",lat:42.740,lon:2.871},
+  {name:"Dijon",icao:"LFSD",lat:47.269,lon:5.090},
+  {name:"Strasbourg",icao:"LFST",lat:48.538,lon:7.628},
+  {name:"Colmar",icao:"LFGA",lat:48.110,lon:7.359},
+  {name:"Metz-Nancy",icao:"LFJL",lat:48.982,lon:6.251},
+  {name:"Épinal",icao:"LFSG",lat:48.325,lon:6.070},
+
+  /* --- Belgium --- */
+  {name:"Brussels",icao:"EBBR",lat:50.901,lon:4.484},
+  {name:"Antwerp",icao:"EBAW",lat:51.189,lon:4.460},
+  {name:"Charleroi",icao:"EBCI",lat:50.459,lon:4.454},
+  {name:"Liège",icao:"EBLG",lat:50.637,lon:5.443},
+  {name:"Kortrijk",icao:"EBKT",lat:50.817,lon:3.205},
+  {name:"Namur (Temploux)",icao:"EBNM",lat:50.488,lon:4.769},
+  {name:"Grimbergen",icao:"EBGB",lat:50.987,lon:4.391},
+  {name:"Ursel",icao:"EBUL",lat:51.144,lon:3.475},
+
+  /* --- Netherlands --- */
+  {name:"Amsterdam Schiphol",icao:"EHAM",lat:52.309,lon:4.764},
+  {name:"Rotterdam",icao:"EHRD",lat:51.957,lon:4.437},
+  {name:"Lelystad",icao:"EHLE",lat:52.460,lon:5.527},
+  {name:"Eindhoven",icao:"EHEH",lat:51.450,lon:5.375},
+  {name:"Groningen (Eelde)",icao:"EHGG",lat:53.120,lon:6.580},
+  {name:"Maastricht",icao:"EHBK",lat:50.911,lon:5.770},
+  {name:"Teuge",icao:"EHTE",lat:52.245,lon:6.047},
+  {name:"Texel",icao:"EHTX",lat:53.114,lon:4.834},
+  {name:"Hoogeveen",icao:"EHHO",lat:52.731,lon:6.516},
+  {name:"Midden-Zeeland",icao:"EHMZ",lat:51.512,lon:3.731},
+
+  /* --- Germany --- */
+  {name:"Cologne Bonn",icao:"EDDK",lat:50.866,lon:7.143},
+  {name:"Düsseldorf",icao:"EDDL",lat:51.289,lon:6.767},
+  {name:"Mönchengladbach",icao:"EDLN",lat:51.230,lon:6.504},
+  {name:"Dortmund",icao:"EDLW",lat:51.518,lon:7.612},
+  {name:"Münster Osnabrück",icao:"EDDG",lat:52.135,lon:7.685},
+  {name:"Frankfurt",icao:"EDDF",lat:50.033,lon:8.570},
+  {name:"Egelsbach",icao:"EDFE",lat:49.960,lon:8.646},
+  {name:"Mainz-Finthen",icao:"EDFZ",lat:49.967,lon:8.147},
+  {name:"Stuttgart",icao:"EDDS",lat:48.690,lon:9.222},
+  {name:"Mannheim",icao:"EDFM",lat:49.473,lon:8.514},
+  {name:"Karlsruhe Baden",icao:"EDSB",lat:48.779,lon:8.080},
+  {name:"Friedrichshafen",icao:"EDNY",lat:47.671,lon:9.511},
+  {name:"Augsburg",icao:"EDMA",lat:48.425,lon:10.932},
+  {name:"Munich",icao:"EDDM",lat:48.354,lon:11.786},
+  {name:"Oberpfaffenhofen",icao:"EDMO",lat:48.081,lon:11.281},
+  {name:"Nuremberg",icao:"EDDN",lat:49.499,lon:11.078},
+  {name:"Hof-Plauen",icao:"EDQM",lat:50.289,lon:11.856},
+  {name:"Bayreuth",icao:"EDQD",lat:49.985,lon:11.640},
+  {name:"Leipzig Halle",icao:"EDDP",lat:51.424,lon:12.236},
+  {name:"Dresden",icao:"EDDC",lat:51.134,lon:13.768},
+  {name:"Berlin Brandenburg",icao:"EDDB",lat:52.366,lon:13.503},
+  {name:"Strausberg",icao:"EDAY",lat:52.581,lon:13.917},
+  {name:"Hamburg",icao:"EDDH",lat:53.630,lon:9.988},
+  {name:"Hannover",icao:"EDDV",lat:52.461,lon:9.685},
+  {name:"Braunschweig",icao:"EDVE",lat:52.319,lon:10.556},
+  {name:"Bremen",icao:"EDDW",lat:53.047,lon:8.787},
+  {name:"Kiel",icao:"EDHK",lat:54.379,lon:10.145},
+  {name:"Heringsdorf",icao:"EDAH",lat:53.879,lon:14.152},
+  {name:"Saarbrücken",icao:"EDDR",lat:49.215,lon:7.109},
+
+  /* --- Austria --- */
+  {name:"Vienna",icao:"LOWW",lat:48.110,lon:16.570},
+  {name:"Wiener Neustadt",icao:"LOAN",lat:47.844,lon:16.260},
+  {name:"Graz",icao:"LOWG",lat:46.991,lon:15.440},
+  {name:"Linz",icao:"LOWL",lat:48.233,lon:14.188},
+  {name:"Salzburg",icao:"LOWS",lat:47.794,lon:13.004},
+  {name:"Innsbruck",icao:"LOWI",lat:47.260,lon:11.344},
+  {name:"Klagenfurt",icao:"LOWK",lat:46.643,lon:14.338},
+  {name:"Wels",icao:"LOLW",lat:48.183,lon:14.041},
+  {name:"St. Pölten",icao:"LOLP",lat:48.171,lon:15.617},
+  {name:"Zell am See",icao:"LOWZ",lat:47.292,lon:12.788},
+
+  /* --- Poland --- */
+  {name:"Warsaw Chopin",icao:"EPWA",lat:52.166,lon:20.967},
+  {name:"Warsaw Modlin",icao:"EPMO",lat:52.451,lon:20.652},
+  {name:"Warsaw Babice",icao:"EPBC",lat:52.268,lon:20.911},
+  {name:"Kraków",icao:"EPKK",lat:50.078,lon:19.785},
+  {name:"Katowice",icao:"EPKT",lat:50.474,lon:19.080},
+  {name:"Wrocław",icao:"EPWR",lat:51.103,lon:16.886},
+  {name:"Poznań",icao:"EPPO",lat:52.421,lon:16.826},
+  {name:"Gdańsk",icao:"EPGD",lat:54.378,lon:18.466},
+  {name:"Łódź",icao:"EPLL",lat:51.722,lon:19.398},
+  {name:"Lublin",icao:"EPLB",lat:51.240,lon:22.714},
+  {name:"Rzeszów",icao:"EPRZ",lat:50.110,lon:22.019},
+  {name:"Szczecin",icao:"EPSC",lat:53.585,lon:14.902},
+  {name:"Bydgoszcz",icao:"EPBY",lat:53.097,lon:17.978},
+  {name:"Olsztyn-Mazury",icao:"EPSY",lat:53.482,lon:20.938},
 ];
 
 /* ---- Helpers --------------------------------------------------------- */
