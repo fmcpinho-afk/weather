@@ -144,6 +144,8 @@
     opacity:0;transform:translateY(8px);animation:rise .5s ease forwards}
   @keyframes rise{to{opacity:1;transform:none}}
   .card.flash{animation:flash 1.6s ease}
+  .card.shown{opacity:1!important;transform:none!important;animation:none}
+  .card.shown.flash{animation:flash 1.6s ease}
   @keyframes flash{0%,100%{box-shadow:var(--shadow)}25%,55%{box-shadow:0 0 0 2px var(--amber),var(--shadow)}}
   .popup-link{color:var(--amber);font-size:.78rem}
   .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
@@ -810,9 +812,14 @@ function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|
 function focusCard(id){
   const el=document.getElementById(id);
   if(!el) return;
-  el.scrollIntoView({behavior:"smooth",block:"center"});
-  el.classList.add("flash");
-  setTimeout(()=>el.classList.remove("flash"),1600);
+  // cards fade in with a stagger; one far down may still be invisible when we
+  // scroll to it. The 'shown' class forces it visible without animation.
+  el.classList.add("shown");
+  requestAnimationFrame(()=>{
+    el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.classList.add("flash");
+    setTimeout(()=>el.classList.remove("flash"),1600);
+  });
 }
 let _map=null, _markers=null;
 function drawMap(rows){
