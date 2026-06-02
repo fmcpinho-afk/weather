@@ -41,13 +41,19 @@
   }
   .wrap{max-width:920px;margin:0 auto}
 
-  header{margin-bottom:30px}
+  header{margin-bottom:18px}
   .eyebrow{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;
-    color:var(--amber);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+    color:var(--amber);margin-bottom:10px;display:flex;align-items:center;gap:10px}
   .eyebrow::before{content:"";width:26px;height:1px;background:var(--amber)}
   h1{font-family:"Fraunces",serif;font-weight:600;
-    font-size:clamp(1.6rem,4.5vw,2.4rem);line-height:1.05;letter-spacing:-.01em;margin-bottom:14px}
-  .sub{color:var(--muted);font-size:.92rem;max-width:54ch}
+    font-size:clamp(1.6rem,4.5vw,2.4rem);line-height:1.05;letter-spacing:-.01em;margin-bottom:7px}
+  .sub{color:var(--muted);font-size:.88rem;max-width:60ch}
+  .to-top{position:fixed;right:18px;bottom:18px;width:44px;height:44px;border-radius:50%;
+    background:var(--amber);color:#fff;border:none;font-size:1.25rem;line-height:1;cursor:pointer;
+    box-shadow:0 4px 14px rgba(27,42,54,.28);opacity:0;pointer-events:none;
+    transition:opacity .2s ease,transform .12s ease;z-index:1000}
+  .to-top.show{opacity:1;pointer-events:auto}
+  .to-top:hover{filter:brightness(1.08);transform:translateY(-2px)}
 
   .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;
     margin:26px 0 8px;padding:16px 18px;background:var(--panel);
@@ -273,7 +279,7 @@
   <header>
     <div class="eyebrow">Fernando's Logbook <a href="help.html" class="help-link">Help</a></div>
     <h1 id="title">Where can I fly tomorrow?</h1>
-    <p class="sub">A read of the weather across the airfields within range, sorted by what looks most flyable. Pick today or tomorrow. Verdicts come from the forecast model, cross-checked against real TAFs where they exist. A starting point, not a flight plan.</p>
+    <p class="sub">Airfields in range, sorted by what looks most flyable. A starting point, not a flight plan.</p>
   </header>
 
   <div class="tabs" id="tabs">
@@ -382,6 +388,8 @@
   </div>
 
 </div>
+
+<button id="toTop" class="to-top" aria-label="Back to top" title="Back to top">↑</button>
 
 <script>
 /* ---- State ----------------------------------------------------------- */
@@ -1689,8 +1697,12 @@ document.querySelectorAll("#tabs button").forEach(b=>{
   });
 });
 
-loadSavedHome();
-loadWatch();
+/* ---- Back to top ----------------------------------------------------- */
+const toTopBtn=document.getElementById("toTop");
+window.addEventListener("scroll",()=>{ toTopBtn.classList.toggle("show", window.scrollY>400); },{passive:true});
+toTopBtn.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
+
+loadSavedHome();loadWatch();
 load();
 </script>
 </body>
