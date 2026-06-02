@@ -23,7 +23,7 @@ exports.handler = async (event) => {
   const tafUrl   = "https://aviationweather.gov/api/data/taf?ids="   + list + "&format=json";
 
   const out = {};
-  const ensure = k => (out[k] = out[k] || { metar: null, taf: null, fcsts: null });
+  const ensure = k => (out[k] = out[k] || { metar: null, taf: null, fcsts: null, lat: null, lon: null, name: null });
 
   try {
     const [mRes, tRes] = await Promise.all([fetch(metarUrl), fetch(tafUrl)]);
@@ -33,7 +33,13 @@ exports.handler = async (event) => {
       const metars = Array.isArray(mJson) ? mJson : (mJson.data || []);
       metars.forEach(m => {
         const k = (m.icaoId || "").toUpperCase();
-        if (k) ensure(k).metar = m.rawOb || m.rawMETAR || null;
+        if (k) {
+          const e = ensure(k);
+          e.metar = m.rawOb || m.rawMETAR || null;
+          if (m.lat != null) e.lat = m.lat;
+          if (m.lon != null) e.lon = m.lon;
+          if (m.name) e.name = m.name;
+        }
       });
     }
 
